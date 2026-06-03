@@ -17,6 +17,7 @@ export type Event = {
   artist: string;
   lineup: string[];
   image_url: string;
+  youtube_embed_url?: string | null;
   status: string;
   ticket_links: TicketLink[];
 };

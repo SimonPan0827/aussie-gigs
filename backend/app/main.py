@@ -1,6 +1,8 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from rapidfuzz import fuzz
+from app.mock_data import mock_events
+
 
 app = FastAPI(title="Aussie Gigs API")
 
@@ -11,53 +13,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-mock_events = [
-    {
-        "id": 1,
-        "title": "Ninajirachi - Live in Melbourne",
-        "slug": "ninajirachi-live-melbourne",
-        "event_date": "2026-07-16",
-        "event_time": "20:00",
-        "event_type": "concert",
-        "genre": "electronic",
-        "city": "Melbourne",
-        "venue": "Forum Melbourne",
-        "artist": "Ninajirachi",
-        "lineup": ["Ninajirachi"],
-        "image_url": "https://images.unsplash.com/photo-1501386761578-eac5c94b800a",
-        "status": "upcoming",
-        "ticket_links": [
-            {
-                "provider": "Ticketek",
-                "url": "https://premier.ticketek.com.au/",
-                "is_primary": True,
-            }
-        ],
-    },
-    {
-        "id": 2,
-        "title": "Laneway Festival Melbourne",
-        "slug": "laneway-festival-melbourne",
-        "event_date": "2026-02-08",
-        "event_time": "12:00",
-        "event_type": "festival",
-        "genre": "pop",
-        "city": "Melbourne",
-        "venue": "Flemington Park",
-        "artist": "Laneway Festival",
-        "lineup": ["Artist A", "Artist B", "Artist C"],
-        "image_url": "https://images.unsplash.com/photo-1459749411175-04bf5292ceea",
-        "status": "upcoming",
-        "ticket_links": [
-            {
-                "provider": "Official Website",
-                "url": "https://www.lanewayfestival.com/",
-                "is_primary": True,
-            }
-        ],
-    },
-]
 
 def is_fuzzy_match(query: str, text: str, threshold: int = 70) -> bool:
     if not query or not text:
@@ -75,7 +30,9 @@ def get_events(
     q: str | None = None,
     city: str | None = None,
     event_type: str | None = None,
-    genre: str | None = None,
+    genre: list[str] | None = Query(default=None),
+    start_date: str | None = None,
+    end_date: str | None = None,
 ):
     events = mock_events
 
@@ -105,13 +62,27 @@ def get_events(
         ]
 
     if genre:
+        selected_genres = [item.lower() for item in genre]
+
         events = [
             event for event in events
-            if event["genre"].lower() == genre.lower()
+            if event["genre"].lower() in selected_genres
         ]
 
-    events = sorted(events, key=lambda event: event["event_date"])
-    
+    if start_date:
+        events = [
+            event for event in events
+            if event["event_date"] >= start_date
+        ]
+
+    if end_date:
+        events = [
+            event for event in events
+            if event["event_date"] <= end_date
+        ]
+
+    events = sorted(events, key=lambda event: (event["event_date"], event["event_time"]))
+
     return events
 
 @app.get("/events/{slug}")

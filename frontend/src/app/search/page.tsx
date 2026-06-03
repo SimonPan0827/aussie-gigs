@@ -2,6 +2,9 @@ import Link from "next/link";
 import EventCard from "@/components/EventCard";
 import { fetchEvents } from "@/lib/api";
 import type { Event } from "@/types/event";
+import Navbar from "@/components/Navbar";
+import DateInput from "@/components/DateInput";
+import CustomDatePicker from "@/components/CustomDatePicker";
 
 function formatEventType(type?: string) {
   if (!type) return "All events";
@@ -76,7 +79,9 @@ function buildTabHref(
     q?: string;
     city?: string;
     event_type?: string;
-    genre?: string;
+    genre?: string | string[];
+    start_date?: string;
+    end_date?: string;
   },
   tab: SearchTab
 ) {
@@ -85,7 +90,14 @@ function buildTabHref(
   if (params.q) searchParams.set("q", params.q);
   if (params.city) searchParams.set("city", params.city);
   if (params.event_type) searchParams.set("event_type", params.event_type);
-  if (params.genre) searchParams.set("genre", params.genre);
+  if (params.start_date) searchParams.set("start_date", params.start_date);
+  if (params.end_date) searchParams.set("end_date", params.end_date);
+
+  const selectedGenres = getSelectedGenres(params.genre);
+
+  selectedGenres.forEach((genre) => {
+    searchParams.append("genre", genre);
+  });
 
   searchParams.set("tab", tab);
 
@@ -127,21 +139,29 @@ type SearchPageProps = {
     q?: string;
     city?: string;
     event_type?: string;
-    genre?: string;
+    genre?: string | string[];
+    start_date?: string;
+    end_date?: string;
     tab?: string;
   }>;
 };
 
 export default async function SearchPage({ searchParams }: SearchPageProps) {
   const params = await searchParams;
+  const selectedGenres = getSelectedGenres(params.genre);
+
   const activeTab = getActiveTab(params.tab);
 
   const events: Event[] = await fetchEvents({
-    q: params.q,
-    city: params.city,
-    event_type: params.event_type,
-    genre: params.genre,
+  q: params.q,
+  city: params.city,
+  event_type: params.event_type,
+  genre: selectedGenres,
+  start_date: params.start_date,
+  end_date: params.end_date,
   });
+
+  const allEventsForNavbar: Event[] = await fetchEvents();
   
   const today = getTodayDateString();
 
@@ -177,12 +197,24 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     new Set(eventsForCurrentTab.map((event) => event.event_date))
   );
 
+  const GENRE_OPTIONS = [
+  "electronic",
+  "indie",
+  "pop",
+  "rock",
+  "hip-hop",
+  "jazz",
+  "dance",
+  "alternative",
+];
+
   const artists = getUniqueArtists(events);
   const venues = getUniqueVenues(events);
   const cities = getUniqueCities(events);
 
   return (
     <main className="min-h-screen bg-gray-50">
+      <Navbar events={allEventsForNavbar} />
       <section className="bg-black px-6 py-16 text-white">
         <div className="mx-auto max-w-6xl">
           <Link href="/" className="text-sm text-gray-300 hover:text-white">
@@ -195,36 +227,120 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
             Find upcoming concerts, gigs and festivals across Australia.
           </p>
 
-          <form action="/search" className="mt-8 grid gap-3 md:grid-cols-[1.4fr_1fr_1fr_auto]">
-            <input
-              name="q"
-              defaultValue={params.q || ""}
-              placeholder="Search artist, venue or event"
-              className="rounded-full px-5 py-3 text-black outline-none"
-            />
+          {/* Search bar */}
+          <form action="/search" className="mt-10 max-w-6xl">
+            <div className="flex items-center gap-3 rounded-full bg-white px-5 py-3">
+              <span className="text-gray-400">⌕</span>
 
-            <select
-              name="city"
-              defaultValue={params.city || ""}
-              className="rounded-full px-5 py-3 text-black outline-none"
-            >
-              <option value="">All cities</option>
-              <option value="Melbourne">Melbourne</option>
-              <option value="Sydney">Sydney</option>
-              <option value="Brisbane">Brisbane</option>
-              <option value="Perth">Perth</option>
-              <option value="Adelaide">Adelaide</option>
-            </select>
+              <input
+                name="q"
+                defaultValue={params.q || ""}
+                placeholder="Search artist, event, venue or city"
+                className="flex-1 bg-transparent text-base text-black outline-none"
+              />
 
-            <button
-              type="submit"
-              className="rounded-full bg-white px-6 py-3 font-medium text-black transition hover:bg-gray-200"
-            >
-              Search
-            </button>
+              {params.event_type && (
+                <input type="hidden" name="event_type" value={params.event_type} />
+              )}
+
+              {selectedGenres.map((genre) => (
+                <input key={genre} type="hidden" name="genre" value={genre} />
+              ))}
+
+              {params.start_date && (
+                <input type="hidden" name="start_date" value={params.start_date} />
+              )}
+
+              {params.end_date && (
+                <input type="hidden" name="end_date" value={params.end_date} />
+              )}
+
+              <input type="hidden" name="tab" value={params.tab || "all"} />
+
+              <button
+                type="submit"
+                className="rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-gray-800"
+              >
+                Search
+              </button>
+            </div>
           </form>
+
+          {/* Date filter */}
+          <form
+            action="/search"
+            className="mt-5 max-w-6xl rounded-2xl border border-white/10 bg-white/5 p-4"
+          >
+            <div className="flex items-center gap-3">
+              <p className="shrink-0 whitespace-nowrap text-sm font-medium text-gray-300">
+                Filter by day
+              </p>
+
+              <CustomDatePicker
+                name="start_date"
+                value={params.start_date || ""}
+                minDate={getTodayDateString()}
+                clearHref={buildSearchHref(params, { start_date: null })}
+              />
+
+              <CustomDatePicker
+                name="end_date"
+                value={params.end_date || ""}
+                minDate={params.start_date || getTodayDateString()}
+                clearHref={buildSearchHref(params, { end_date: null })}
+              />
+
+              <input type="hidden" name="q" value={params.q || ""} />
+
+              {params.event_type && (
+                <input type="hidden" name="event_type" value={params.event_type} />
+              )}
+
+              {selectedGenres.map((genre) => (
+                <input key={genre} type="hidden" name="genre" value={genre} />
+              ))}
+
+              <input type="hidden" name="tab" value={params.tab || "all"} />
+
+              <button
+                type="submit"
+                className="shrink-0 whitespace-nowrap rounded-full bg-white px-6 py-3 text-sm font-medium text-black transition hover:bg-gray-200"
+              >
+                Apply
+              </button>
+            </div>
+          </form>
+          <div className="mt-6">
+            <p className="mb-3 text-sm font-semibold text-gray-300">Genre</p>
+
+            <div className="flex flex-wrap gap-2">
+              {GENRE_OPTIONS.map((genre) => {
+                const isSelected = selectedGenres.includes(genre);
+
+                const nextGenres = isSelected
+                  ? selectedGenres.filter((item) => item !== genre)
+                  : [...selectedGenres, genre];
+
+                return (
+                  <Link
+                    key={genre}
+                    href={buildFilterHref(params, nextGenres)}
+                    className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition ${
+                      isSelected
+                        ? "border-white bg-white text-black"
+                        : "border-white/20 bg-white/5 text-gray-300 hover:border-white hover:text-white"
+                    }`}
+                  >
+                    <span>{genre}</span>
+                    {isSelected && <span className="text-xs">×</span>}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </section>
+
 
       <section className="mx-auto max-w-6xl px-6 py-12">
         <div className="mb-6 flex items-end justify-between gap-4">
@@ -254,6 +370,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                   pastEvents.length === 1 ? "" : "s"
                 } found`}
             </p>
+            
           </div>
             <div className="mt-6 flex flex-wrap gap-3">
               {[
@@ -392,4 +509,95 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
       </section>
     </main>
   );
+}
+
+function getSelectedGenres(genre?: string | string[]) {
+  if (!genre) return [];
+
+  return Array.isArray(genre) ? genre : [genre];
+}
+
+function buildFilterHref(
+  params: {
+    q?: string;
+    city?: string;
+    event_type?: string;
+    genre?: string | string[];
+    start_date?: string;
+    end_date?: string;
+    tab?: string;
+  },
+  nextGenres: string[]
+) {
+  const searchParams = new URLSearchParams();
+
+  if (params.q) searchParams.set("q", params.q);
+  if (params.city) searchParams.set("city", params.city);
+  if (params.event_type) searchParams.set("event_type", params.event_type);
+  if (params.start_date) searchParams.set("start_date", params.start_date);
+  if (params.end_date) searchParams.set("end_date", params.end_date);
+  if (params.tab) searchParams.set("tab", params.tab);
+
+  nextGenres.forEach((genre) => {
+    searchParams.append("genre", genre);
+  });
+
+  const queryString = searchParams.toString();
+
+  return queryString ? `/search?${queryString}` : "/search";
+}
+
+function buildSearchHref(
+  params: {
+    q?: string;
+    city?: string;
+    event_type?: string;
+    genre?: string | string[];
+    start_date?: string;
+    end_date?: string;
+    tab?: string;
+  },
+  overrides: {
+    q?: string | null;
+    city?: string | null;
+    event_type?: string | null;
+    genre?: string[] | null;
+    start_date?: string | null;
+    end_date?: string | null;
+    tab?: string | null;
+  }
+) {
+  const searchParams = new URLSearchParams();
+
+  const nextQ = overrides.q !== undefined ? overrides.q : params.q;
+  const nextCity = overrides.city !== undefined ? overrides.city : params.city;
+  const nextEventType =
+    overrides.event_type !== undefined
+      ? overrides.event_type
+      : params.event_type;
+  const nextStartDate =
+    overrides.start_date !== undefined ? overrides.start_date : params.start_date;
+  const nextEndDate =
+    overrides.end_date !== undefined ? overrides.end_date : params.end_date;
+  const nextTab = overrides.tab !== undefined ? overrides.tab : params.tab;
+
+  const nextGenres =
+    overrides.genre !== undefined
+      ? overrides.genre || []
+      : getSelectedGenres(params.genre);
+
+  if (nextQ) searchParams.set("q", nextQ);
+  if (nextCity) searchParams.set("city", nextCity);
+  if (nextEventType) searchParams.set("event_type", nextEventType);
+  if (nextStartDate) searchParams.set("start_date", nextStartDate);
+  if (nextEndDate) searchParams.set("end_date", nextEndDate);
+  if (nextTab) searchParams.set("tab", nextTab);
+
+  nextGenres.forEach((genre) => {
+    searchParams.append("genre", genre);
+  });
+
+  const queryString = searchParams.toString();
+
+  return queryString ? `/search?${queryString}` : "/search";
 }

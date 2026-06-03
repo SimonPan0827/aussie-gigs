@@ -4,7 +4,9 @@ type FetchEventsParams = {
   q?: string;
   city?: string;
   event_type?: string;
-  genre?: string;
+  genre?: string| string[];
+  start_date?: string;
+  end_date?: string;
 };
 
 export async function fetchEvents(params?: FetchEventsParams) {
@@ -23,7 +25,21 @@ export async function fetchEvents(params?: FetchEventsParams) {
   }
 
   if (params?.genre) {
-    searchParams.set("genre", params.genre);
+    if (Array.isArray(params.genre)) {
+      params.genre.forEach((genre) => {
+        if (genre) searchParams.append("genre", genre);
+      });
+    } else {
+      searchParams.set("genre", params.genre);
+    }
+  }
+
+  if (params?.start_date) {
+    searchParams.set("start_date", params.start_date);
+  }
+
+  if (params?.end_date) {
+    searchParams.set("end_date", params.end_date);
   }
 
   const queryString = searchParams.toString();

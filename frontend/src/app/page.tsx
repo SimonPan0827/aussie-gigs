@@ -1,5 +1,5 @@
 import EventCard from "@/components/EventCard";
-import SearchModal from "@/components/SearchModal";
+import Navbar from "@/components/Navbar";
 import { fetchEvents } from "@/lib/api";
 import type { Event } from "@/types/event";
 import Link from "next/link";
@@ -10,15 +10,7 @@ export default async function HomePage() {
   return (
     <main className="min-h-screen bg-gray-50">
       {/* Top Navigation */}
-      <nav className="bg-black px-6 py-5 text-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-6">
-          <Link href="/" className="text-xl font-bold tracking-tight">
-            Aussie Gigs
-          </Link>
-
-          <SearchModal events={events} />
-        </div>
-      </nav>
+      <Navbar events={events} />
 
       {/* Hero section */}
       <section className="bg-black px-6 pb-20 pt-12 text-white">
