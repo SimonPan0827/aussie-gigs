@@ -97,6 +97,24 @@ export default async function HomePage() {
             </p>
           </Link>
         </div>
+
+        <Link
+          href="/search"
+          className="mt-5 flex items-center justify-between rounded-2xl border bg-white px-8 py-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+        >
+          <div className="flex items-center gap-4">
+            <span className="text-3xl">🎵</span>
+
+            <div>
+              <h3 className="text-xl font-semibold text-gray-900">All gigs</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                Browse all upcoming concerts, festivals, DJ sets and party nights.
+              </p>
+            </div>
+          </div>
+
+          <span className="text-2xl text-gray-500">→</span>
+        </Link>
       </section>
 
       {/* Upcoming section */}
