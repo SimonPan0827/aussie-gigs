@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import Link from "next/link";
+import { useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 
 type CustomDatePickerProps = {
   name: string;
@@ -68,34 +68,40 @@ export default function CustomDatePicker({
   clearHref,
   minDate,
 }: CustomDatePickerProps) {
+  const router = useRouter();
+  const buttonRef = useRef<HTMLDivElement | null>(null);
+
   const todayString = getTodayString();
   const minimumDate = minDate || todayString;
 
   const selectedDate = parseDateString(value);
-  const minParsed = parseDateString(minimumDate);
+  const minimumParsedDate = parseDateString(minimumDate);
 
   const [currentValue, setCurrentValue] = useState(value);
   const [isOpen, setIsOpen] = useState(false);
+  const [popupPosition, setPopupPosition] = useState({ top: 0, left: 0 });
+
   const [visibleYear, setVisibleYear] = useState(
-    selectedDate?.year || minParsed?.year || new Date().getFullYear()
+    selectedDate?.year || minimumParsedDate?.year || new Date().getFullYear()
   );
+
   const [visibleMonth, setVisibleMonth] = useState(
-    selectedDate?.month ?? minParsed?.month ?? new Date().getMonth()
+    selectedDate?.month ?? minimumParsedDate?.month ?? new Date().getMonth()
   );
 
   const years = useMemo(() => {
-    const startYear = minParsed?.year || new Date().getFullYear();
+    const startYear = minimumParsedDate?.year || new Date().getFullYear();
     const endYear = startYear + 5;
 
     return Array.from(
       { length: endYear - startYear + 1 },
       (_, index) => startYear + index
     );
-  }, [minParsed?.year]);
+  }, [minimumParsedDate?.year]);
 
   const calendarDays = useMemo(() => {
-    const firstDay = new Date(visibleYear, visibleMonth, 1);
-    const firstWeekday = firstDay.getDay();
+    const firstDayOfMonth = new Date(visibleYear, visibleMonth, 1);
+    const firstWeekday = firstDayOfMonth.getDay();
     const daysInMonth = new Date(visibleYear, visibleMonth + 1, 0).getDate();
 
     const emptyDays = Array.from({ length: firstWeekday }, () => null);
@@ -114,6 +120,19 @@ export default function CustomDatePicker({
     return [...emptyDays, ...monthDays];
   }, [visibleYear, visibleMonth, minimumDate]);
 
+  function openCalendar() {
+    const rect = buttonRef.current?.getBoundingClientRect();
+
+    if (rect) {
+      setPopupPosition({
+        top: rect.bottom + 12,
+        left: rect.left,
+      });
+    }
+
+    setIsOpen((current) => !current);
+  }
+
   function handleSelectDate(dateString: string) {
     if (dateString < minimumDate) return;
 
@@ -121,106 +140,144 @@ export default function CustomDatePicker({
     setIsOpen(false);
   }
 
+  function handleClearDate(event: React.MouseEvent<HTMLButtonElement>) {
+    event.stopPropagation();
+
+    setCurrentValue("");
+    setIsOpen(false);
+    router.push(clearHref);
+  }
+
   return (
-    <div className="relative min-w-0 flex-1">
+    <div className="min-w-0 flex-1">
       <input type="hidden" name={name} value={currentValue} />
 
-      <button
-        type="button"
-        onClick={() => setIsOpen((current) => !current)}
-        className="flex w-full items-center justify-between rounded-full bg-white px-5 py-3 text-left text-sm shadow-sm"
+      <div
+        ref={buttonRef}
+        className="flex w-full items-center rounded-full bg-white px-5 py-3 text-sm shadow-sm"
       >
-        <span className={currentValue ? "text-black" : "text-gray-500"}>
-          {formatDisplayDate(currentValue)}
-        </span>
-
-        <span className="text-gray-400">▾</span>
-      </button>
-
-      {currentValue && (
-        <Link
-          href={clearHref}
-          onClick={() => setCurrentValue("")}
-          className="absolute right-10 top-1/2 z-10 -translate-y-1/2 text-sm font-semibold text-gray-500 hover:text-black"
+        <button
+          type="button"
+          onClick={openCalendar}
+          className="min-w-0 flex-1 text-left outline-none"
         >
-          ×
-        </Link>
-      )}
+          <span className={currentValue ? "text-black" : "text-gray-500"}>
+            {formatDisplayDate(currentValue)}
+          </span>
+        </button>
+
+        {currentValue && (
+          <button
+            type="button"
+            onClick={handleClearDate}
+            className="ml-3 shrink-0 text-sm font-semibold text-gray-500 hover:text-black"
+            aria-label="Clear date"
+          >
+            ×
+          </button>
+        )}
+
+        <button
+          type="button"
+          onClick={openCalendar}
+          className="ml-3 shrink-0 text-gray-400"
+          aria-label="Open calendar"
+        >
+          ▾
+        </button>
+      </div>
 
       {isOpen && (
-        <div className="absolute left-0 top-full z-[9999] mt-3 w-80 rounded-3xl border border-gray-200 bg-white p-4 text-black shadow-2xl">
-          <div className="mb-4 flex gap-2">
-            <select
-              value={visibleMonth}
-              onChange={(event) => setVisibleMonth(Number(event.target.value))}
-              className="min-w-0 flex-1 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm text-black outline-none"
-            >
-              {MONTHS.map((month, index) => (
-                <option key={month} value={index}>
-                  {month}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={visibleYear}
-              onChange={(event) => setVisibleYear(Number(event.target.value))}
-              className="w-28 shrink-0 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm text-black outline-none"
-            >
-              {years.map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
-          </div>
+        <>
+          <button
+            type="button"
+            aria-label="Close calendar"
+            onClick={() => setIsOpen(false)}
+            className="fixed inset-0 z-[9998] cursor-default bg-transparent"
+          />
 
           <div
-            className="grid gap-1 text-center text-xs font-semibold text-gray-400"
-            style={{ gridTemplateColumns: "repeat(7, minmax(0, 1fr))" }}
+            className="fixed z-[9999] w-80 max-w-[calc(100vw-2rem)] rounded-3xl border border-gray-200 bg-white p-4 text-black shadow-2xl"
+            style={{
+              top: popupPosition.top,
+              left: popupPosition.left,
+            }}
           >
-            {WEEKDAYS.map((day) => (
-              <div key={day} className="py-1">
-                {day}
-              </div>
-            ))}
+            <div className="mb-4 flex gap-2">
+              <select
+                value={visibleMonth}
+                onChange={(event) =>
+                  setVisibleMonth(Number(event.target.value))
+                }
+                className="min-w-0 flex-1 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm text-black outline-none"
+              >
+                {MONTHS.map((month, index) => (
+                  <option key={month} value={index}>
+                    {month}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={visibleYear}
+                onChange={(event) => setVisibleYear(Number(event.target.value))}
+                className="w-28 shrink-0 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm text-black outline-none"
+              >
+                {years.map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div
+              className="grid gap-1 text-center text-xs font-semibold text-gray-400"
+              style={{ gridTemplateColumns: "repeat(7, minmax(0, 1fr))" }}
+            >
+              {WEEKDAYS.map((weekday) => (
+                <div key={weekday} className="py-1">
+                  {weekday}
+                </div>
+              ))}
+            </div>
+
+            <div
+              className="mt-1 grid gap-1"
+              style={{ gridTemplateColumns: "repeat(7, minmax(0, 1fr))" }}
+            >
+              {calendarDays.map((date, index) => {
+                if (!date) {
+                  return <div key={`empty-${index}`} className="h-10" />;
+                }
+
+                const isSelected = date.dateString === currentValue;
+
+                return (
+                  <button
+                    key={date.dateString}
+                    type="button"
+                    disabled={date.disabled}
+                    onClick={() => handleSelectDate(date.dateString)}
+                    className={`flex h-10 items-center justify-center rounded-full text-sm transition ${
+                      isSelected
+                        ? "bg-black text-white"
+                        : date.disabled
+                          ? "cursor-not-allowed text-gray-300"
+                          : "text-gray-800 hover:bg-gray-100"
+                    }`}
+                  >
+                    {date.day}
+                  </button>
+                );
+              })}
+            </div>
+
+            <p className="mt-4 text-xs text-gray-400">
+              Dates before today are not available.
+            </p>
           </div>
-
-          <div
-            className="mt-1 grid gap-1"
-            style={{ gridTemplateColumns: "repeat(7, minmax(0, 1fr))" }}
-          >
-            {calendarDays.map((date, index) => {
-              if (!date) {
-                return <div key={`empty-${index}`} className="h-10" />;
-              }
-
-              const isSelected = date.dateString === currentValue;
-
-              return (
-                <button
-                  key={date.dateString}
-                  type="button"
-                  disabled={date.disabled}
-                  onClick={() => handleSelectDate(date.dateString)}
-                  className={`flex h-10 items-center justify-center rounded-full text-sm transition ${
-                    isSelected
-                      ? "bg-black text-white"
-                      : date.disabled
-                        ? "cursor-not-allowed text-gray-300"
-                        : "text-gray-800 hover:bg-gray-100"
-                  }`}
-                >
-                  {date.day}
-                </button>
-              );
-            })}
-          </div>
-
-          <p className="mt-4 text-xs text-gray-400">
-            Dates before today are not available.
-          </p>
-        </div>
+        </>
       )}
     </div>
   );

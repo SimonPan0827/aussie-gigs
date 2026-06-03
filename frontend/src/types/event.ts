@@ -1,3 +1,5 @@
+import type { Artist } from "@/types/artist";
+
 export type TicketLink = {
   provider: string;
   url: string;
@@ -14,8 +16,10 @@ export type Event = {
   genre: string;
   city: string;
   venue: string;
-  artist: string;
-  lineup: string[];
+
+  artist: Artist;
+  lineup: Artist[];
+
   image_url: string;
   youtube_embed_url?: string | null;
   status: string;

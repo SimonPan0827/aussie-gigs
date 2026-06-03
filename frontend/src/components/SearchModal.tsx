@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { Event } from "@/types/event";
+import type { Artist } from "@/types/artist";
 
 type SearchModalProps = {
   events: Event[];
@@ -26,7 +27,7 @@ export default function SearchModal({ events }: SearchModalProps) {
       .filter((event) => {
         return (
           event.title.toLowerCase().includes(normalizedQuery) ||
-          event.artist.toLowerCase().includes(normalizedQuery) ||
+          event.artist.name.toLowerCase().includes(normalizedQuery) ||
           event.venue.toLowerCase().includes(normalizedQuery) ||
           event.city.toLowerCase().includes(normalizedQuery) ||
           event.event_type.toLowerCase().includes(normalizedQuery) ||
@@ -36,20 +37,25 @@ export default function SearchModal({ events }: SearchModalProps) {
       .slice(0, 8);
   }, [events, normalizedQuery]);
 
-  const artists = useMemo(() => {
-    const uniqueArtists = new Map<string, Event>();
+    const artists = useMemo(() => {
+    const uniqueArtists = new Map<string, Artist>();
 
     events.forEach((event) => {
-      if (
-        !normalizedQuery ||
-        event.artist.toLowerCase().includes(normalizedQuery)
-      ) {
-        uniqueArtists.set(event.artist, event);
-      }
+        const eventArtists = [event.artist, ...event.lineup];
+
+        eventArtists.forEach((artist) => {
+        if (
+            !normalizedQuery ||
+            artist.name.toLowerCase().includes(normalizedQuery) ||
+            artist.genre.toLowerCase().includes(normalizedQuery)
+        ) {
+            uniqueArtists.set(artist.slug, artist);
+        }
+        });
     });
 
-    return Array.from(uniqueArtists.entries()).slice(0, 8);
-  }, [events, normalizedQuery]);
+    return Array.from(uniqueArtists.values()).slice(0, 8);
+    }, [events, normalizedQuery]);
 
   const venues = useMemo(() => {
     const uniqueVenues = new Map<string, Event>();
@@ -172,14 +178,11 @@ export default function SearchModal({ events }: SearchModalProps) {
 
                   <ResultSection title="Artists">
                     {artists.length > 0 ? (
-                      artists.slice(0, 3).map(([artist, event]) => (
-                        <SimpleResult
-                          key={artist}
-                          label="ARTIST"
-                          title={artist}
-                          subtitle={event.genre || "Artist"}
-                          href={`/search?q=${encodeURIComponent(artist)}`}
-                          onClick={() => setIsOpen(false)}
+                      artists.slice(0, 3).map((artist) => (
+                        <ArtistResult
+                            key={artist.slug}
+                            artist={artist}
+                            onClick={() => setIsOpen(false)}
                         />
                       ))
                     ) : (
@@ -238,15 +241,12 @@ export default function SearchModal({ events }: SearchModalProps) {
               {activeTab === "artists" && (
                 <div className="grid gap-4 md:grid-cols-2">
                   {artists.length > 0 ? (
-                    artists.map(([artist, event]) => (
-                      <SimpleResult
-                        key={artist}
-                        label="ARTIST"
-                        title={artist}
-                        subtitle={event.genre || "Artist"}
-                        href={`/search?q=${encodeURIComponent(artist)}`}
-                        onClick={() => setIsOpen(false)}
-                      />
+                    artists.map((artist) => (
+                        <ArtistResult
+                            key={artist.slug}
+                            artist={artist}
+                            onClick={() => setIsOpen(false)}
+                        />
                     ))
                   ) : (
                     <EmptyResult text="No matching artists." />
@@ -398,5 +398,41 @@ function EmptyResult({ text }: { text: string }) {
     <div className="rounded-2xl border border-dashed border-gray-200 p-5 text-sm text-gray-500">
       {text}
     </div>
+  );
+}
+
+function ArtistResult({
+  artist,
+  onClick,
+}: {
+  artist: Artist;
+  onClick?: () => void;
+}) {
+  return (
+    <Link
+      href={`/artists/${artist.slug}`}
+      onClick={onClick}
+      className="flex items-center gap-4 rounded-2xl p-2 transition hover:bg-gray-50"
+    >
+      <img
+        src={artist.image_url}
+        alt={artist.name}
+        className="h-14 w-14 shrink-0 rounded-full object-cover"
+      />
+
+      <div className="min-w-0 flex-1">
+        <span className="rounded bg-black px-2 py-1 text-xs font-bold text-white">
+          ARTIST
+        </span>
+
+        <h4 className="mt-2 truncate font-semibold text-gray-900">
+          {artist.name}
+        </h4>
+
+        <p className="text-sm text-gray-500">{artist.genre}</p>
+      </div>
+
+      <span className="shrink-0 text-xl text-gray-400">→</span>
+    </Link>
   );
 }

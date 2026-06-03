@@ -2,6 +2,7 @@ import Link from "next/link";
 import EventCard from "@/components/EventCard";
 import { fetchEvents } from "@/lib/api";
 import type { Event } from "@/types/event";
+import type { Artist } from "@/types/artist";
 import Navbar from "@/components/Navbar";
 import DateInput from "@/components/DateInput";
 import CustomDatePicker from "@/components/CustomDatePicker";
@@ -105,13 +106,17 @@ function buildTabHref(
 }
 
 function getUniqueArtists(events: Event[]) {
-  const artists = new Map<string, Event>();
+  const artists = new Map<string, Artist>();
 
   events.forEach((event) => {
-    artists.set(event.artist, event);
+    artists.set(event.artist.slug, event.artist);
+
+    event.lineup.forEach((artist) => {
+      artists.set(artist.slug, artist);
+    });
   });
 
-  return Array.from(artists.entries());
+  return Array.from(artists.values());
 }
 
 function getUniqueVenues(events: Event[]) {
@@ -341,7 +346,6 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
         </div>
       </section>
 
-
       <section className="mx-auto max-w-6xl px-6 py-12">
         <div className="mb-6 flex items-end justify-between gap-4">
           <div>
@@ -455,17 +459,31 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
 
         {activeTab === "artists" && (
           <div className="grid gap-4 md:grid-cols-2">
-            {artists.map(([artist, event]) => (
+            {artists.map((artist) => (
               <Link
-                key={artist}
-                href={`/search?q=${encodeURIComponent(artist)}&tab=events`}
-                className="rounded-2xl border bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+                key={artist.slug}
+                href={`/artists/${artist.slug}`}
+                className="flex items-center gap-4 rounded-2xl border bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
               >
-                <p className="text-sm font-semibold uppercase tracking-wide text-gray-500">
-                  Artist
-                </p>
-                <h3 className="mt-2 text-xl font-bold text-gray-900">{artist}</h3>
-                <p className="mt-1 text-gray-500">{event.genre}</p>
+                <img
+                  src={artist.image_url}
+                  alt={artist.name}
+                  className="h-16 w-16 rounded-full object-cover"
+                />
+
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+                    Artist
+                  </p>
+
+                  <h3 className="mt-1 text-xl font-bold text-gray-900">
+                    {artist.name}
+                  </h3>
+
+                  <p className="mt-1 text-gray-500">{artist.genre}</p>
+                </div>
+
+                <span className="ml-auto text-2xl text-gray-400">→</span>
               </Link>
             ))}
           </div>

@@ -54,20 +54,45 @@ export default async function EventDetailPage({
 
       <section className="mx-auto grid max-w-6xl gap-8 px-6 py-12 md:grid-cols-[1.4fr_0.8fr]">
         <div className="space-y-8">
-          <div className="rounded-2xl bg-white p-6 shadow-sm">
-            <h2 className="text-2xl font-semibold">Line-up</h2>
+        <div className="rounded-2xl bg-white p-6 shadow-sm">
+        <h2 className="text-2xl font-semibold">Line-up</h2>
 
-            <div className="mt-4 space-y-3">
-              {event.lineup.map((artist) => (
-                <div
-                  key={artist}
-                  className="rounded-xl border border-gray-100 p-4"
-                >
-                  <p className="font-medium text-gray-900">{artist}</p>
-                </div>
-              ))}
-            </div>
-          </div>
+        <div className="mt-4 divide-y divide-gray-100">
+          {event.lineup.map((artist) => (
+            <Link
+              key={artist.slug}
+              href={`/artists/${artist.slug}`}
+              className="flex items-center gap-4 py-4 transition hover:bg-gray-50"
+            >
+              <img
+                src={artist.image_url}
+                alt={artist.name}
+                className="shrink-0 rounded-full object-cover"
+                style={{
+                  width: "56px",
+                  height: "56px",
+                  minWidth: "56px",
+                  minHeight: "56px",
+                  maxWidth: "56px",
+                  maxHeight: "56px",
+                }}
+              />
+
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-gray-500">Artist</p>
+
+                <p className="truncate text-lg font-semibold text-gray-900">
+                  {artist.name}
+                </p>
+
+                <p className="text-sm text-gray-500">{artist.genre}</p>
+              </div>
+
+              <span className="shrink-0 text-xl text-gray-400">→</span>
+            </Link>
+          ))}
+        </div>
+      </div>
 
           <div className="rounded-2xl bg-white p-6 shadow-sm">
             <h2 className="text-2xl font-semibold">Venue</h2>

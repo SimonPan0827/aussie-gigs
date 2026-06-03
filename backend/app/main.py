@@ -42,11 +42,11 @@ def get_events(
         events = [
             event for event in events
             if is_fuzzy_match(query, event["title"])
-            or is_fuzzy_match(query, event["artist"])
+            or is_fuzzy_match(query, event["artist"]["name"])
             or is_fuzzy_match(query, event["venue"])
             or is_fuzzy_match(query, event["city"])
             or is_fuzzy_match(query, event["genre"])
-            or any(is_fuzzy_match(query, artist) for artist in event["lineup"])
+            or any(is_fuzzy_match(query, artist["name"]) for artist in event["lineup"])
         ]
 
     if city:
