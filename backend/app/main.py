@@ -1,7 +1,12 @@
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from rapidfuzz import fuzz
-from app.mock_data import mock_events
+from sqlalchemy.orm import Session, joinedload, selectinload
+
+from app.db.database import get_db
+from app.models.artist import Artist
+from app.models.event import Event
+from app.models.venue import Venue
 
 
 app = FastAPI(title="Aussie Gigs API")
@@ -21,6 +26,69 @@ def is_fuzzy_match(query: str, text: str, threshold: int = 70) -> bool:
     score = fuzz.partial_ratio(query.lower(), text.lower())
     return score >= threshold
 
+
+def serialize_artist(artist: Artist):
+    return {
+        "id": artist.id,
+        "name": artist.name,
+        "slug": artist.slug,
+        "image_url": artist.image_url,
+        "genre": artist.genre,
+    }
+
+
+def serialize_venue(venue: Venue):
+    return {
+        "id": venue.id,
+        "name": venue.name,
+        "slug": venue.slug,
+        "state": venue.state,
+        "city": venue.city,
+        "address": venue.address,
+        "image_url": venue.image_url,
+    }
+
+
+def serialize_ticket_link(ticket_link):
+    return {
+        "provider": ticket_link.provider,
+        "url": ticket_link.url,
+        "is_primary": ticket_link.is_primary,
+    }
+
+
+def serialize_event(event: Event):
+    return {
+        "id": event.id,
+        "title": event.title,
+        "slug": event.slug,
+        "event_date": event.event_date.isoformat(),
+        "event_time": event.event_time.strftime("%H:%M"),
+        "event_type": event.event_type,
+        "genre": event.genre,
+        "state": event.state,
+        "city": event.city,
+        "venue": serialize_venue(event.venue),
+        "artist": serialize_artist(event.artist),
+        "lineup": [serialize_artist(artist) for artist in event.lineup],
+        "image_url": event.image_url,
+        "youtube_embed_url": event.youtube_embed_url,
+        "status": event.status,
+        "ticket_links": [
+            serialize_ticket_link(ticket_link)
+            for ticket_link in event.ticket_links
+        ],
+    }
+
+
+def event_query(db: Session):
+    return db.query(Event).options(
+        joinedload(Event.venue),
+        joinedload(Event.artist),
+        selectinload(Event.lineup),
+        selectinload(Event.ticket_links),
+    )
+
 @app.get("/")
 def health_check():
     return {"status": "ok", "message": "Aussie Gigs API is running"}
@@ -28,133 +96,109 @@ def health_check():
 @app.get("/events")
 def get_events(
     q: str | None = None,
+    state: str | None = None,
     city: str | None = None,
     event_type: str | None = None,
     genre: list[str] | None = Query(default=None),
     start_date: str | None = None,
     end_date: str | None = None,
+    db: Session = Depends(get_db),
 ):
-    events = mock_events
+    query = event_query(db)
 
-    if q:
-        query = q.lower()
-
-        events = [
-            event for event in events
-            if is_fuzzy_match(query, event["title"])
-            or is_fuzzy_match(query, event["artist"]["name"])
-            or is_fuzzy_match(query, event["venue"]["name"])
-            or is_fuzzy_match(query, event["city"])
-            or is_fuzzy_match(query, event["genre"])
-            or any(is_fuzzy_match(query, artist["name"]) for artist in event["lineup"])
-        ]
+    if state:
+        query = query.filter(Event.state.ilike(state))
 
     if city:
-        events = [
-            event for event in events
-            if event["city"].lower() == city.lower()
-        ]
+        query = query.filter(Event.city.ilike(city))
 
     if event_type:
-        events = [
-            event for event in events
-            if event["event_type"].lower() == event_type.lower()
-        ]
+        query = query.filter(Event.event_type.ilike(event_type))
 
     if genre:
         selected_genres = [item.lower() for item in genre]
-
-        events = [
-            event for event in events
-            if event["genre"].lower() in selected_genres
-        ]
+        query = query.filter(Event.genre.in_(selected_genres))
 
     if start_date:
-        events = [
-            event for event in events
-            if event["event_date"] >= start_date
-        ]
+        query = query.filter(Event.event_date >= start_date)
 
     if end_date:
+        query = query.filter(Event.event_date <= end_date)
+
+    events = [
+        serialize_event(event)
+        for event in query.order_by(Event.event_date, Event.event_time).all()
+    ]
+
+    if q:
+        normalized_query = q.lower()
+
         events = [
             event for event in events
-            if event["event_date"] <= end_date
+            if is_fuzzy_match(normalized_query, event["title"])
+            or is_fuzzy_match(normalized_query, event["artist"]["name"])
+            or is_fuzzy_match(normalized_query, event["venue"]["name"])
+            or is_fuzzy_match(normalized_query, event["city"])
+            or is_fuzzy_match(normalized_query, event["state"])
+            or is_fuzzy_match(normalized_query, event["genre"])
+            or any(
+                is_fuzzy_match(normalized_query, artist["name"])
+                for artist in event["lineup"]
+            )
         ]
-
-    events = sorted(events, key=lambda event: (event["event_date"], event["event_time"]))
 
     return events
 
 @app.get("/events/{slug}")
-def get_event_by_slug(slug: str):
-    for event in mock_events:
-        if event["slug"] == slug:
-            return event
+def get_event_by_slug(slug: str, db: Session = Depends(get_db)):
+    event = event_query(db).filter(Event.slug == slug).first()
+
+    if event:
+        return serialize_event(event)
 
     raise HTTPException(status_code=404, detail="Event not found")
 
 @app.get("/artists")
-def get_artists():
-    artists = {}
-
-    for event in mock_events:
-        artists[event["artist"]["slug"]] = event["artist"]
-
-        for artist in event["lineup"]:
-            artists[artist["slug"]] = artist
-
-    return list(artists.values())
+def get_artists(db: Session = Depends(get_db)):
+    artists = db.query(Artist).order_by(Artist.name).all()
+    return [serialize_artist(artist) for artist in artists]
 
 
 @app.get("/artists/{slug}")
-def get_artist_by_slug(slug: str):
-    artist_data = None
-    artist_events = []
+def get_artist_by_slug(slug: str, db: Session = Depends(get_db)):
+    artist = db.query(Artist).filter(Artist.slug == slug).first()
 
-    for event in mock_events:
-        if event["artist"]["slug"] == slug:
-            artist_data = event["artist"]
-            artist_events.append(event)
-
-        for artist in event["lineup"]:
-            if artist["slug"] == slug:
-                artist_data = artist
-
-                if event not in artist_events:
-                    artist_events.append(event)
-
-    if not artist_data:
+    if not artist:
         raise HTTPException(status_code=404, detail="Artist not found")
 
+    events = event_query(db).filter(
+        (Event.main_artist_id == artist.id)
+        | (Event.lineup.any(Artist.id == artist.id))
+    ).order_by(Event.event_date, Event.event_time).all()
+
     return {
-        **artist_data,
-        "events": artist_events,
+        **serialize_artist(artist),
+        "events": [serialize_event(event) for event in events],
     }
 
 @app.get("/venues")
-def get_venues():
-    venues = {}
-
-    for event in mock_events:
-        venues[event["venue"]["slug"]] = event["venue"]
-
-    return list(venues.values())
+def get_venues(db: Session = Depends(get_db)):
+    venues = db.query(Venue).order_by(Venue.name).all()
+    return [serialize_venue(venue) for venue in venues]
 
 
 @app.get("/venues/{slug}")
-def get_venue_by_slug(slug: str):
-    venue_data = None
-    venue_events = []
+def get_venue_by_slug(slug: str, db: Session = Depends(get_db)):
+    venue = db.query(Venue).filter(Venue.slug == slug).first()
 
-    for event in mock_events:
-        if event["venue"]["slug"] == slug:
-            venue_data = event["venue"]
-            venue_events.append(event)
-
-    if not venue_data:
+    if not venue:
         raise HTTPException(status_code=404, detail="Venue not found")
 
+    events = event_query(db).filter(
+        Event.venue_id == venue.id
+    ).order_by(Event.event_date, Event.event_time).all()
+
     return {
-        **venue_data,
-        "events": venue_events,
+        **serialize_venue(venue),
+        "events": [serialize_event(event) for event in events],
     }

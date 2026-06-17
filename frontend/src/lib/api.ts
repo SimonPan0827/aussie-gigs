@@ -1,10 +1,14 @@
+import type { Genre } from "@/types/genre";
+import type { AustralianState } from "@/types/location";
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
 type FetchEventsParams = {
   q?: string;
+  state?: AustralianState;
   city?: string;
   event_type?: string;
-  genre?: string| string[];
+  genre?: Genre | Genre[];
   start_date?: string;
   end_date?: string;
 };
@@ -14,6 +18,10 @@ export async function fetchEvents(params?: FetchEventsParams) {
 
   if (params?.q) {
     searchParams.set("q", params.q);
+  }
+
+  if (params?.state) {
+    searchParams.set("state", params.state);
   }
 
   if (params?.city) {

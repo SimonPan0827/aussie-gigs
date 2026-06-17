@@ -3,6 +3,8 @@ import EventCard from "@/components/EventCard";
 import { fetchEvents } from "@/lib/api";
 import type { Event } from "@/types/event";
 import type { Artist } from "@/types/artist";
+import { GENRES, type Genre } from "@/types/genre";
+import { AU_STATES, type AustralianState } from "@/types/location";
 import type { Venue } from "@/types/venue";
 import Navbar from "@/components/Navbar";
 import CustomDatePicker from "@/components/CustomDatePicker";
@@ -59,8 +61,7 @@ type SearchTab =
   | "past"
   | "artists"
   | "events"
-  | "venues"
-  | "cities";
+  | "venues";
 
 function getActiveTab(tab?: string): SearchTab {
   const validTabs: SearchTab[] = [
@@ -70,7 +71,6 @@ function getActiveTab(tab?: string): SearchTab {
     "artists",
     "events",
     "venues",
-    "cities",
   ];
 
   return validTabs.includes(tab as SearchTab) ? (tab as SearchTab) : "all";
@@ -100,19 +100,10 @@ function getUniqueVenues(events: Event[]) {
   return Array.from(venues.values());
 }
 
-function getUniqueCities(events: Event[]) {
-  const cities = new Map<string, Event>();
-
-  events.forEach((event) => {
-    cities.set(event.city, event);
-  });
-
-  return Array.from(cities.entries());
-}
-
 type SearchPageProps = {
   searchParams: Promise<{
     q?: string;
+    state?: string;
     city?: string;
     event_type?: string;
     genre?: string | string[];
@@ -125,20 +116,23 @@ type SearchPageProps = {
 
 export default async function SearchPage({ searchParams }: SearchPageProps) {
   const params = await searchParams;
+  const selectedState = getSelectedState(params.state);
   const selectedGenres = getSelectedGenres(params.genre);
 
   const activeTab = getActiveTab(params.tab);
 
   const events: Event[] = await fetchEvents({
-  q: params.q,
-  city: params.city,
-  event_type: params.event_type,
-  genre: selectedGenres,
-  start_date: params.start_date,
-  end_date: params.end_date,
+    q: params.q,
+    state: selectedState,
+    city: params.city,
+    event_type: params.event_type,
+    genre: selectedGenres,
+    start_date: params.start_date,
+    end_date: params.end_date,
   });
 
   const allEventsForNavbar: Event[] = await fetchEvents();
+  const cityOptions = getCityOptions(allEventsForNavbar, selectedState);
   
   const today = getTodayDateString();
 
@@ -192,20 +186,8 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     new Set(paginatedEvents.map((event) => event.event_date))
   );
 
-  const GENRE_OPTIONS = [
-  "electronic",
-  "indie",
-  "pop",
-  "rock",
-  "hip-hop",
-  "jazz",
-  "dance",
-  "alternative",
-];
-
   const artists = getUniqueArtists(events);
   const venues = getUniqueVenues(events);
-  const cities = getUniqueCities(events);
   const currentSearchHref = buildSearchHref(params, {});
 
   return (
@@ -239,6 +221,14 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                 <input type="hidden" name="event_type" value={params.event_type} />
               )}
 
+              {selectedState && (
+                <input type="hidden" name="state" value={selectedState} />
+              )}
+
+              {params.city && (
+                <input type="hidden" name="city" value={params.city} />
+              )}
+
               {selectedGenres.map((genre) => (
                 <input key={genre} type="hidden" name="genre" value={genre} />
               ))}
@@ -259,6 +249,78 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
               >
                 Search
               </button>
+            </div>
+          </form>
+
+          <form
+            action="/search"
+            className="mt-5 max-w-6xl rounded-2xl border border-white/10 bg-white/5 p-4"
+          >
+            <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-gray-300">
+                  State
+                </span>
+                <select
+                  name="state"
+                  defaultValue={selectedState || ""}
+                  className="w-full rounded-full border border-white/10 bg-white px-4 py-3 text-sm font-medium text-black outline-none"
+                >
+                  <option value="">All states</option>
+                  {AU_STATES.map((state) => (
+                    <option key={state.code} value={state.code}>
+                      {state.code}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-gray-300">
+                  City
+                </span>
+                <select
+                  name="city"
+                  defaultValue={params.city || ""}
+                  className="w-full rounded-full border border-white/10 bg-white px-4 py-3 text-sm font-medium text-black outline-none"
+                >
+                  <option value="">All cities</option>
+                  {cityOptions.map((city) => (
+                    <option key={city} value={city}>
+                      {city}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <div className="flex items-end">
+                <button
+                  type="submit"
+                  className="w-full rounded-full bg-white px-6 py-3 text-sm font-medium text-black transition hover:bg-gray-200 md:w-auto"
+                >
+                  Apply
+                </button>
+              </div>
+
+              <input type="hidden" name="q" value={params.q || ""} />
+
+              {params.event_type && (
+                <input type="hidden" name="event_type" value={params.event_type} />
+              )}
+
+              {selectedGenres.map((genre) => (
+                <input key={genre} type="hidden" name="genre" value={genre} />
+              ))}
+
+              {params.start_date && (
+                <input type="hidden" name="start_date" value={params.start_date} />
+              )}
+
+              {params.end_date && (
+                <input type="hidden" name="end_date" value={params.end_date} />
+              )}
+
+              <input type="hidden" name="tab" value={params.tab || "all"} />
             </div>
           </form>
 
@@ -298,6 +360,14 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                 <input type="hidden" name="event_type" value={params.event_type} />
               )}
 
+              {selectedState && (
+                <input type="hidden" name="state" value={selectedState} />
+              )}
+
+              {params.city && (
+                <input type="hidden" name="city" value={params.city} />
+              )}
+
               {selectedGenres.map((genre) => (
                 <input key={genre} type="hidden" name="genre" value={genre} />
               ))}
@@ -316,7 +386,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
             <p className="mb-3 text-sm font-semibold text-gray-300">Genre</p>
 
             <div className="flex flex-wrap gap-2">
-              {GENRE_OPTIONS.map((genre) => {
+              {GENRES.map((genre) => {
                 const isSelected = selectedGenres.includes(genre);
 
                 const nextGenres = isSelected
@@ -359,9 +429,6 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
               {activeTab === "venues" &&
                 `${venues.length} venue${venues.length === 1 ? "" : "s"} found`}
 
-              {activeTab === "cities" &&
-                `${cities.length} cit${cities.length === 1 ? "y" : "ies"} found`}
-
               {(activeTab === "all" ||
                 activeTab === "upcoming" ||
                 activeTab === "events") &&
@@ -384,7 +451,6 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                 ["artists", "Artists"],
                 ["events", "Events"],
                 ["venues", "Venues"],
-                ["cities", "Cities"],
               ].map(([value, label]) => {
                 const tabValue = value as SearchTab;
                 const isActive = activeTab === tabValue;
@@ -516,37 +582,43 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
           </div>
         )}
 
-        {activeTab === "cities" && (
-          <div className="grid gap-4 md:grid-cols-2">
-            {cities.map(([city]) => (
-              <Link
-                key={city}
-                href={`/search?city=${encodeURIComponent(city)}&tab=events`}
-                className="rounded-2xl border bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
-              >
-                <p className="text-sm font-semibold uppercase tracking-wide text-gray-500">
-                  City
-                </p>
-                <h3 className="mt-2 text-xl font-bold text-gray-900">{city}</h3>
-                <p className="mt-1 text-gray-500">Australia</p>
-              </Link>
-            ))}
-          </div>
-        )}
       </section>
     </main>
   );
 }
 
-function getSelectedGenres(genre?: string | string[]) {
+function getSelectedGenres(genre?: string | string[]): Genre[] {
   if (!genre) return [];
 
-  return Array.isArray(genre) ? genre : [genre];
+  const genres = Array.isArray(genre) ? genre : [genre];
+
+  return genres.filter((item): item is Genre =>
+    GENRES.includes(item as Genre)
+  );
+}
+
+function getSelectedState(state?: string): AustralianState | undefined {
+  return AU_STATES.some((item) => item.code === state)
+    ? (state as AustralianState)
+    : undefined;
+}
+
+function getCityOptions(events: Event[], state?: AustralianState) {
+  const cities = new Set<string>();
+
+  events.forEach((event) => {
+    if (!state || event.state === state) {
+      cities.add(event.city);
+    }
+  });
+
+  return Array.from(cities).sort((a, b) => a.localeCompare(b));
 }
 
 function buildSearchHref(
   params: {
     q?: string;
+    state?: string;
     city?: string;
     event_type?: string;
     genre?: string | string[];
@@ -557,9 +629,10 @@ function buildSearchHref(
   },
   overrides: {
     q?: string | null;
+    state?: AustralianState | null;
     city?: string | null;
     event_type?: string | null;
-    genre?: string[] | null;
+    genre?: Genre[] | null;
     start_date?: string | null;
     end_date?: string | null;
     tab?: string | null;
@@ -569,6 +642,8 @@ function buildSearchHref(
   const searchParams = new URLSearchParams();
 
   const nextQ = overrides.q !== undefined ? overrides.q : params.q;
+  const nextState =
+    overrides.state !== undefined ? overrides.state : getSelectedState(params.state);
   const nextCity = overrides.city !== undefined ? overrides.city : params.city;
   const nextEventType =
     overrides.event_type !== undefined
@@ -587,6 +662,7 @@ function buildSearchHref(
       : getSelectedGenres(params.genre);
 
   if (nextQ) searchParams.set("q", nextQ);
+  if (nextState) searchParams.set("state", nextState);
   if (nextCity) searchParams.set("city", nextCity);
   if (nextEventType) searchParams.set("event_type", nextEventType);
   if (nextStartDate) searchParams.set("start_date", nextStartDate);

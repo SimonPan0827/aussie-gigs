@@ -4,17 +4,19 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { Event } from "@/types/event";
 import type { Artist } from "@/types/artist";
+import { AU_STATES, type AustralianState } from "@/types/location";
 import type { Venue } from "@/types/venue";
 
 type SearchModalProps = {
   events: Event[];
 };
 
-type SearchTab = "top" | "artists" | "events" | "venues" | "cities";
+type SearchTab = "top" | "artists" | "events" | "venues";
 
 export default function SearchModal({ events }: SearchModalProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const [selectedState, setSelectedState] = useState<AustralianState | "">("");
   const [activeTab, setActiveTab] = useState<SearchTab>("top");
 
   const normalizedQuery = query.trim().toLowerCase();
@@ -31,6 +33,7 @@ export default function SearchModal({ events }: SearchModalProps) {
           event.artist.name.toLowerCase().includes(normalizedQuery) ||
           event.venue.name.toLowerCase().includes(normalizedQuery) ||
           event.city.toLowerCase().includes(normalizedQuery) ||
+          event.state.toLowerCase().includes(normalizedQuery) ||
           event.event_type.toLowerCase().includes(normalizedQuery) ||
           event.genre?.toLowerCase().includes(normalizedQuery)
         );
@@ -73,24 +76,7 @@ export default function SearchModal({ events }: SearchModalProps) {
     return Array.from(uniqueVenues.values()).slice(0, 8);
   }, [events, normalizedQuery]);
 
-  const cities = useMemo(() => {
-    const uniqueCities = new Map<string, Event>();
-
-    events.forEach((event) => {
-      if (
-        !normalizedQuery ||
-        event.city.toLowerCase().includes(normalizedQuery)
-      ) {
-        uniqueCities.set(event.city, event);
-      }
-    });
-
-    return Array.from(uniqueCities.entries()).slice(0, 8);
-  }, [events, normalizedQuery]);
-
-  const viewAllHref = query.trim()
-    ? `/search?q=${encodeURIComponent(query.trim())}`
-    : "/search";
+  const viewAllHref = buildSearchHref(query.trim(), selectedState);
 
   return (
     <>
@@ -100,7 +86,7 @@ export default function SearchModal({ events }: SearchModalProps) {
         className="flex w-full max-w-md items-center gap-3 rounded-full bg-white px-5 py-3 text-left text-sm text-gray-500 shadow-sm transition hover:bg-gray-100"
       >
         <span className="text-lg">⌕</span>
-        <span>Search events, artists, venues or cities</span>
+        <span>Search events, artists or venues</span>
       </button>
 
       {isOpen && (
@@ -119,14 +105,33 @@ export default function SearchModal({ events }: SearchModalProps) {
               </button>
             </div>
 
-            <div className="mx-6 mt-6 flex items-center gap-3 rounded-2xl border border-gray-200 px-4 py-3 focus-within:border-black">
+            <div className="mx-6 mt-6 flex flex-col gap-3 rounded-2xl border border-gray-200 px-4 py-3 focus-within:border-black md:flex-row md:items-center">
+              <label className="sr-only" htmlFor="modal-state-filter">
+                State
+              </label>
+              <select
+                id="modal-state-filter"
+                value={selectedState}
+                onChange={(event) =>
+                  setSelectedState(event.target.value as AustralianState | "")
+                }
+                className="w-full rounded-full border border-gray-200 bg-gray-50 px-3 py-2 text-xs font-semibold text-gray-900 outline-none md:w-24"
+              >
+                <option value="">All</option>
+                {AU_STATES.map((state) => (
+                  <option key={state.code} value={state.code}>
+                    {state.code}
+                  </option>
+                ))}
+              </select>
+
               <span className="text-2xl text-gray-500">⌕</span>
 
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 autoFocus
-                placeholder="Search artist, event, venue or city"
+                placeholder="Search artist, event or venue"
                 className="min-w-0 flex-1 text-lg text-gray-900 outline-none"
               />
 
@@ -139,6 +144,14 @@ export default function SearchModal({ events }: SearchModalProps) {
                   Clear
                 </button>
               )}
+
+              <Link
+                href={viewAllHref}
+                onClick={() => setIsOpen(false)}
+                className="rounded-full bg-black px-5 py-2 text-sm font-semibold text-white transition hover:bg-gray-800"
+              >
+                Search
+              </Link>
             </div>
 
             <div className="mt-6 flex gap-6 overflow-x-auto border-b border-gray-200 px-6">
@@ -147,7 +160,6 @@ export default function SearchModal({ events }: SearchModalProps) {
                 ["artists", "Artists"],
                 ["events", "Events"],
                 ["venues", "Venues"],
-                ["cities", "Cities"],
               ].map(([value, label]) => (
                 <button
                   key={value}
@@ -208,22 +220,6 @@ export default function SearchModal({ events }: SearchModalProps) {
                     )}
                   </ResultSection>
 
-                  <ResultSection title="Cities">
-                    {cities.length > 0 ? (
-                      cities.slice(0, 2).map(([city]) => (
-                        <SimpleResult
-                          key={city}
-                          label="CITY"
-                          title={city}
-                          subtitle="Australia"
-                          href={`/search?city=${encodeURIComponent(city)}`}
-                          onClick={() => setIsOpen(false)}
-                        />
-                      ))
-                    ) : (
-                      <EmptyResult text="No matching cities." />
-                    )}
-                  </ResultSection>
                 </div>
               )}
 
@@ -274,24 +270,6 @@ export default function SearchModal({ events }: SearchModalProps) {
                 </div>
               )}
 
-              {activeTab === "cities" && (
-                <div className="grid gap-4 md:grid-cols-2">
-                  {cities.length > 0 ? (
-                    cities.map(([city]) => (
-                      <SimpleResult
-                        key={city}
-                        label="CITY"
-                        title={city}
-                        subtitle="Australia"
-                        href={`/search?city=${encodeURIComponent(city)}`}
-                        onClick={() => setIsOpen(false)}
-                      />
-                    ))
-                  ) : (
-                    <EmptyResult text="No matching cities." />
-                  )}
-                </div>
-              )}
             </div>
 
             <div className="border-t border-gray-100 px-6 py-4">
@@ -364,7 +342,7 @@ function SimpleResult({
   href,
   onClick,
 }: {
-  label: "ARTIST" | "VENUE" | "CITY";
+  label: "ARTIST" | "VENUE";
   title: string;
   subtitle: string;
   href: string;
@@ -379,7 +357,6 @@ function SimpleResult({
       <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-gray-900 text-2xl text-white">
         {label === "ARTIST" && "🎤"}
         {label === "VENUE" && "🏢"}
-        {label === "CITY" && "📍"}
       </div>
 
       <div className="min-w-0">
@@ -400,6 +377,17 @@ function EmptyResult({ text }: { text: string }) {
       {text}
     </div>
   );
+}
+
+function buildSearchHref(query: string, state: AustralianState | "") {
+  const searchParams = new URLSearchParams();
+
+  if (query) searchParams.set("q", query);
+  if (state) searchParams.set("state", state);
+
+  const queryString = searchParams.toString();
+
+  return queryString ? `/search?${queryString}` : "/search";
 }
 
 function ArtistResult({

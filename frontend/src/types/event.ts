@@ -1,4 +1,6 @@
 import type { Artist } from "@/types/artist";
+import type { Genre } from "@/types/genre";
+import type { AustralianState } from "@/types/location";
 import type { Venue } from "@/types/venue";
 
 export type TicketLink = {
@@ -14,8 +16,9 @@ export type Event = {
   event_date: string;
   event_time: string;
   event_type: string;
-  genre: string;
+  genre: Genre;
   city: string;
+  state: AustralianState;
   
   venue: Venue;
 
