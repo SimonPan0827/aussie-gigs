@@ -3,9 +3,10 @@ import EventCard from "@/components/EventCard";
 import { fetchEvents } from "@/lib/api";
 import type { Event } from "@/types/event";
 import type { Artist } from "@/types/artist";
+import type { Venue } from "@/types/venue";
 import Navbar from "@/components/Navbar";
-import DateInput from "@/components/DateInput";
 import CustomDatePicker from "@/components/CustomDatePicker";
+import Pagination from "@/components/Pagination";
 
 function formatEventType(type?: string) {
   if (!type) return "All events";
@@ -75,36 +76,6 @@ function getActiveTab(tab?: string): SearchTab {
   return validTabs.includes(tab as SearchTab) ? (tab as SearchTab) : "all";
 }
 
-function buildTabHref(
-  params: {
-    q?: string;
-    city?: string;
-    event_type?: string;
-    genre?: string | string[];
-    start_date?: string;
-    end_date?: string;
-  },
-  tab: SearchTab
-) {
-  const searchParams = new URLSearchParams();
-
-  if (params.q) searchParams.set("q", params.q);
-  if (params.city) searchParams.set("city", params.city);
-  if (params.event_type) searchParams.set("event_type", params.event_type);
-  if (params.start_date) searchParams.set("start_date", params.start_date);
-  if (params.end_date) searchParams.set("end_date", params.end_date);
-
-  const selectedGenres = getSelectedGenres(params.genre);
-
-  selectedGenres.forEach((genre) => {
-    searchParams.append("genre", genre);
-  });
-
-  searchParams.set("tab", tab);
-
-  return `/search?${searchParams.toString()}`;
-}
-
 function getUniqueArtists(events: Event[]) {
   const artists = new Map<string, Artist>();
 
@@ -120,13 +91,13 @@ function getUniqueArtists(events: Event[]) {
 }
 
 function getUniqueVenues(events: Event[]) {
-  const venues = new Map<string, Event>();
+  const venues = new Map<string, Venue>();
 
   events.forEach((event) => {
-    venues.set(event.venue, event);
+    venues.set(event.venue.slug, event.venue);
   });
 
-  return Array.from(venues.entries());
+  return Array.from(venues.values());
 }
 
 function getUniqueCities(events: Event[]) {
@@ -148,6 +119,7 @@ type SearchPageProps = {
     start_date?: string;
     end_date?: string;
     tab?: string;
+    page?: string;
   }>;
 };
 
@@ -196,10 +168,28 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
       : activeTab === "past"
         ? pastEvents
         : upcomingEvents;
+  
+  const parsedPage = Number(params.page || "1");
+  const currentPage = Number.isFinite(parsedPage) && parsedPage > 0
+    ? Math.floor(parsedPage)
+    : 1;
+  const EVENTS_PER_PAGE = 10;
 
-  const groupedEvents = groupEventsByDate(eventsForCurrentTab);
+  const totalPages = Math.max(
+    Math.ceil(eventsForCurrentTab.length / EVENTS_PER_PAGE),
+    1
+  );
+
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+
+  const paginatedEvents = eventsForCurrentTab.slice(
+    (safeCurrentPage - 1) * EVENTS_PER_PAGE,
+    safeCurrentPage * EVENTS_PER_PAGE
+  );
+
+  const groupedEvents = groupEventsByDate(paginatedEvents);
   const groupedDates = Array.from(
-    new Set(eventsForCurrentTab.map((event) => event.event_date))
+    new Set(paginatedEvents.map((event) => event.event_date))
   );
 
   const GENRE_OPTIONS = [
@@ -216,6 +206,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   const artists = getUniqueArtists(events);
   const venues = getUniqueVenues(events);
   const cities = getUniqueCities(events);
+  const currentSearchHref = buildSearchHref(params, {});
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -285,14 +276,20 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                 name="start_date"
                 value={params.start_date || ""}
                 minDate={getTodayDateString()}
-                clearHref={buildSearchHref(params, { start_date: null })}
+                clearHref={buildSearchHref(params, {
+                  start_date: null,
+                  page: null,
+                })}
               />
 
               <CustomDatePicker
                 name="end_date"
                 value={params.end_date || ""}
                 minDate={params.start_date || getTodayDateString()}
-                clearHref={buildSearchHref(params, { end_date: null })}
+                clearHref={buildSearchHref(params, {
+                  end_date: null,
+                  page: null,
+                })}
               />
 
               <input type="hidden" name="q" value={params.q || ""} />
@@ -329,7 +326,10 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                 return (
                   <Link
                     key={genre}
-                    href={buildFilterHref(params, nextGenres)}
+                    href={buildSearchHref(params, {
+                      genre: nextGenres,
+                      page: null,
+                    })}
                     className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition ${
                       isSelected
                         ? "border-white bg-white text-black"
@@ -392,15 +392,10 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                 return (
                   <Link
                     key={value}
-                    href={buildTabHref(
-                      {
-                        q: params.q,
-                        city: params.city,
-                        event_type: params.event_type,
-                        genre: params.genre,
-                      },
-                      tabValue
-                    )}
+                    href={buildSearchHref(params, {
+                      tab: tabValue,
+                      page: null,
+                    })}
                     className={`rounded-full border px-5 py-2 text-sm font-medium transition ${
                       isActive
                         ? "border-black bg-black text-white"
@@ -437,6 +432,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                           key={event.id}
                           event={event}
                           isPast={event.event_date < today}
+                          returnHref={currentSearchHref}
                         />
                       ))}
                     </div>
@@ -454,6 +450,11 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                 </p>
               </div>
             )}
+            <Pagination
+              currentPage={safeCurrentPage}
+              totalPages={totalPages}
+              buildPageHref={(page) => buildSearchHref(params, { page })}
+            />
           </>
         )}
 
@@ -491,17 +492,25 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
 
         {activeTab === "venues" && (
           <div className="grid gap-4 md:grid-cols-2">
-            {venues.map(([venue, event]) => (
+            {venues.map((venue) => (
               <Link
-                key={venue}
-                href={`/search?q=${encodeURIComponent(venue)}&tab=events`}
+                key={venue.slug}
+                href={`/venues/${venue.slug}`}
                 className="rounded-2xl border bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
               >
-                <p className="text-sm font-semibold uppercase tracking-wide text-gray-500">
-                  Venue
+                <img
+                  src={venue.image_url}
+                  alt={venue.name}
+                  className="h-40 w-full rounded-xl object-cover"
+                />
+
+                <h3 className="mt-4 text-xl font-bold text-gray-900">
+                  {venue.name}
+                </h3>
+
+                <p className="mt-1 text-gray-500">
+                  {venue.city}
                 </p>
-                <h3 className="mt-2 text-xl font-bold text-gray-900">{venue}</h3>
-                <p className="mt-1 text-gray-500">{event.city}</p>
               </Link>
             ))}
           </div>
@@ -535,36 +544,6 @@ function getSelectedGenres(genre?: string | string[]) {
   return Array.isArray(genre) ? genre : [genre];
 }
 
-function buildFilterHref(
-  params: {
-    q?: string;
-    city?: string;
-    event_type?: string;
-    genre?: string | string[];
-    start_date?: string;
-    end_date?: string;
-    tab?: string;
-  },
-  nextGenres: string[]
-) {
-  const searchParams = new URLSearchParams();
-
-  if (params.q) searchParams.set("q", params.q);
-  if (params.city) searchParams.set("city", params.city);
-  if (params.event_type) searchParams.set("event_type", params.event_type);
-  if (params.start_date) searchParams.set("start_date", params.start_date);
-  if (params.end_date) searchParams.set("end_date", params.end_date);
-  if (params.tab) searchParams.set("tab", params.tab);
-
-  nextGenres.forEach((genre) => {
-    searchParams.append("genre", genre);
-  });
-
-  const queryString = searchParams.toString();
-
-  return queryString ? `/search?${queryString}` : "/search";
-}
-
 function buildSearchHref(
   params: {
     q?: string;
@@ -574,6 +553,7 @@ function buildSearchHref(
     start_date?: string;
     end_date?: string;
     tab?: string;
+    page?: string;
   },
   overrides: {
     q?: string | null;
@@ -583,6 +563,7 @@ function buildSearchHref(
     start_date?: string | null;
     end_date?: string | null;
     tab?: string | null;
+    page?: number | string | null;
   }
 ) {
   const searchParams = new URLSearchParams();
@@ -598,6 +579,7 @@ function buildSearchHref(
   const nextEndDate =
     overrides.end_date !== undefined ? overrides.end_date : params.end_date;
   const nextTab = overrides.tab !== undefined ? overrides.tab : params.tab;
+  const nextPage = overrides.page !== undefined ? overrides.page : params.page;
 
   const nextGenres =
     overrides.genre !== undefined
@@ -610,6 +592,7 @@ function buildSearchHref(
   if (nextStartDate) searchParams.set("start_date", nextStartDate);
   if (nextEndDate) searchParams.set("end_date", nextEndDate);
   if (nextTab) searchParams.set("tab", nextTab);
+  if (nextPage) searchParams.set("page", String(nextPage));
 
   nextGenres.forEach((genre) => {
     searchParams.append("genre", genre);

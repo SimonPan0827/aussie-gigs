@@ -4,9 +4,18 @@ import type { Event } from "@/types/event";
 type EventCardProps = {
   event: Event;
   isPast?: boolean;
+  returnHref?: string;
 };
 
-export default function EventCard({ event, isPast = false }: EventCardProps) {
+export default function EventCard({
+  event,
+  isPast = false,
+  returnHref,
+}: EventCardProps) {
+  const eventHref = returnHref
+    ? `/events/${event.slug}?return_to=${encodeURIComponent(returnHref)}`
+    : `/events/${event.slug}`;
+
   return (
     <div
       className={`overflow-hidden rounded-2xl border bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-md ${
@@ -35,11 +44,11 @@ export default function EventCard({ event, isPast = false }: EventCardProps) {
             {event.title}
           </h2>
 
-          <p className="mt-1 text-gray-600">{event.venue}</p>
+          <p className="mt-1 text-gray-600">{event.venue.name}</p>
         </div>
 
         <Link
-          href={`/events/${event.slug}`}
+          href={eventHref}
           className={`inline-flex rounded-full px-5 py-2 text-sm font-medium transition ${
             isPast
               ? "bg-gray-300 text-gray-700 hover:bg-gray-400"

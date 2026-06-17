@@ -43,7 +43,7 @@ def get_events(
             event for event in events
             if is_fuzzy_match(query, event["title"])
             or is_fuzzy_match(query, event["artist"]["name"])
-            or is_fuzzy_match(query, event["venue"])
+            or is_fuzzy_match(query, event["venue"]["name"])
             or is_fuzzy_match(query, event["city"])
             or is_fuzzy_match(query, event["genre"])
             or any(is_fuzzy_match(query, artist["name"]) for artist in event["lineup"])
@@ -92,3 +92,69 @@ def get_event_by_slug(slug: str):
             return event
 
     raise HTTPException(status_code=404, detail="Event not found")
+
+@app.get("/artists")
+def get_artists():
+    artists = {}
+
+    for event in mock_events:
+        artists[event["artist"]["slug"]] = event["artist"]
+
+        for artist in event["lineup"]:
+            artists[artist["slug"]] = artist
+
+    return list(artists.values())
+
+
+@app.get("/artists/{slug}")
+def get_artist_by_slug(slug: str):
+    artist_data = None
+    artist_events = []
+
+    for event in mock_events:
+        if event["artist"]["slug"] == slug:
+            artist_data = event["artist"]
+            artist_events.append(event)
+
+        for artist in event["lineup"]:
+            if artist["slug"] == slug:
+                artist_data = artist
+
+                if event not in artist_events:
+                    artist_events.append(event)
+
+    if not artist_data:
+        raise HTTPException(status_code=404, detail="Artist not found")
+
+    return {
+        **artist_data,
+        "events": artist_events,
+    }
+
+@app.get("/venues")
+def get_venues():
+    venues = {}
+
+    for event in mock_events:
+        venues[event["venue"]["slug"]] = event["venue"]
+
+    return list(venues.values())
+
+
+@app.get("/venues/{slug}")
+def get_venue_by_slug(slug: str):
+    venue_data = None
+    venue_events = []
+
+    for event in mock_events:
+        if event["venue"]["slug"] == slug:
+            venue_data = event["venue"]
+            venue_events.append(event)
+
+    if not venue_data:
+        raise HTTPException(status_code=404, detail="Venue not found")
+
+    return {
+        **venue_data,
+        "events": venue_events,
+    }

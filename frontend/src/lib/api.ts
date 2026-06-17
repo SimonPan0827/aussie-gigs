@@ -70,3 +70,27 @@ export async function fetchEventBySlug(slug: string) {
 
   return res.json();
 }
+
+export async function fetchArtistBySlug(slug: string) {
+  const res = await fetch(`${API_BASE_URL}/artists/${slug}`, {
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to fetch artist");
+  }
+
+  return res.json();
+}
+
+export async function fetchVenueBySlug(slug: string) {
+  const res = await fetch(`${API_BASE_URL}/venues/${slug}`, {
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to fetch venue");
+  }
+
+  return res.json();
+}

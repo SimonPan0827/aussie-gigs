@@ -7,14 +7,28 @@ type EventDetailPageProps = {
   params: Promise<{
     slug: string;
   }>;
+  searchParams: Promise<{
+    return_to?: string;
+  }>;
 };
+
+function getSafeBackHref(returnTo?: string) {
+  if (returnTo?.startsWith("/") && !returnTo.startsWith("//")) {
+    return returnTo;
+  }
+
+  return "/";
+}
 
 export default async function EventDetailPage({
   params,
+  searchParams,
 }: EventDetailPageProps) {
   const { slug } = await params;
+  const { return_to } = await searchParams;
   const event: Event = await fetchEventBySlug(slug);
   const allEventsForNavbar: Event[] = await fetchEvents();
+  const backHref = getSafeBackHref(return_to);
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -22,7 +36,7 @@ export default async function EventDetailPage({
       <section className="bg-black px-6 py-16 text-white">
         <div className="mx-auto grid max-w-6xl gap-10 md:grid-cols-[1.4fr_0.8fr] md:items-center">
           <div>
-            <Link href="/" className="text-sm text-gray-300 hover:text-white">
+            <Link href={backHref} className="text-sm text-gray-300 hover:text-white">
               ← Back to events
             </Link>
 
@@ -39,7 +53,7 @@ export default async function EventDetailPage({
                 {event.event_date} · {event.event_time}
               </p>
               <p>
-                {event.venue} · {event.city}
+                {event.venue.name} · {event.city}
               </p>
             </div>
           </div>
@@ -94,12 +108,15 @@ export default async function EventDetailPage({
         </div>
       </div>
 
-          <div className="rounded-2xl bg-white p-6 shadow-sm">
+          <Link
+            href={`/venues/${event.venue.slug}`}
+            className="block rounded-2xl bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+          >
             <h2 className="text-2xl font-semibold">Venue</h2>
 
-            <p className="mt-4 text-gray-700">{event.venue}</p>
+            <p className="mt-4 text-gray-700">{event.venue.name}</p>
             <p className="text-gray-500">{event.city}, Australia</p>
-          </div>
+          </Link>
         </div>
 
         <aside className="space-y-6">

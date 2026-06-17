@@ -1,4 +1,5 @@
 import type { Artist } from "@/types/artist";
+import type { Venue } from "@/types/venue";
 
 export type TicketLink = {
   provider: string;
@@ -15,7 +16,8 @@ export type Event = {
   event_type: string;
   genre: string;
   city: string;
-  venue: string;
+  
+  venue: Venue;
 
   artist: Artist;
   lineup: Artist[];

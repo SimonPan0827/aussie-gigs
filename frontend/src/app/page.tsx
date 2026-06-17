@@ -13,9 +13,21 @@ export default async function HomePage() {
       <Navbar events={events} />
 
       {/* Hero section */}
-      <section className="bg-black px-6 pb-20 pt-12 text-white">
-        <div className="mx-auto max-w-6xl">
-          <p className="text-sm uppercase tracking-widest text-gray-400">
+      <section className="relative overflow-hidden bg-black px-6 pb-20 pt-12 text-white">
+        {/* Background image */}
+        <div
+          className="absolute inset-0 bg-cover bg-center opacity-45"
+          style={{
+            backgroundImage: "url('/mainpage.jpeg')",
+          }}
+        />
+
+        {/* Dark overlay to keep text readable */}
+        <div className="absolute inset-0 bg-black/55" />
+
+        {/* Hero content */}
+        <div className="relative z-10 mx-auto max-w-6xl">
+          <p className="text-sm uppercase tracking-widest text-gray-300">
             Live music in Australia
           </p>
 
@@ -23,9 +35,9 @@ export default async function HomePage() {
             Discover upcoming concerts, gigs and festivals across Australia.
           </h1>
 
-          <p className="mt-6 max-w-2xl text-lg text-gray-300">
-            Search live music events by city, artist and venue, then jump
-            directly to official ticket links.
+          <p className="mt-6 max-w-2xl text-lg text-gray-200">
+            Search live music events by city, artist and venue, then jump directly to
+            official ticket links.
           </p>
         </div>
       </section>

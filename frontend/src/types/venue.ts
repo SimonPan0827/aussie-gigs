@@ -1,13 +1,14 @@
 import type { Event } from "@/types/event";
 
-export type Artist = {
+export type Venue = {
   id: number;
   name: string;
   slug: string;
+  city: string;
+  address: string;
   image_url: string;
-  genre: string;
 };
 
-export type ArtistDetail = Artist & {
+export type VenueDetail = Venue & {
   events: Event[];
 };

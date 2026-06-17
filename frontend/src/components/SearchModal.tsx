@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { Event } from "@/types/event";
 import type { Artist } from "@/types/artist";
+import type { Venue } from "@/types/venue";
 
 type SearchModalProps = {
   events: Event[];
@@ -28,7 +29,7 @@ export default function SearchModal({ events }: SearchModalProps) {
         return (
           event.title.toLowerCase().includes(normalizedQuery) ||
           event.artist.name.toLowerCase().includes(normalizedQuery) ||
-          event.venue.toLowerCase().includes(normalizedQuery) ||
+          event.venue.name.toLowerCase().includes(normalizedQuery) ||
           event.city.toLowerCase().includes(normalizedQuery) ||
           event.event_type.toLowerCase().includes(normalizedQuery) ||
           event.genre?.toLowerCase().includes(normalizedQuery)
@@ -58,18 +59,18 @@ export default function SearchModal({ events }: SearchModalProps) {
     }, [events, normalizedQuery]);
 
   const venues = useMemo(() => {
-    const uniqueVenues = new Map<string, Event>();
+    const uniqueVenues = new Map<string, Venue>();
 
     events.forEach((event) => {
       if (
         !normalizedQuery ||
-        event.venue.toLowerCase().includes(normalizedQuery)
+        event.venue.name.toLowerCase().includes(normalizedQuery)
       ) {
-        uniqueVenues.set(event.venue, event);
+        uniqueVenues.set(event.venue.slug, event.venue);
       }
     });
 
-    return Array.from(uniqueVenues.entries()).slice(0, 8);
+    return Array.from(uniqueVenues.values()).slice(0, 8);
   }, [events, normalizedQuery]);
 
   const cities = useMemo(() => {
@@ -192,13 +193,13 @@ export default function SearchModal({ events }: SearchModalProps) {
 
                   <ResultSection title="Venues">
                     {venues.length > 0 ? (
-                      venues.slice(0, 2).map(([venue, event]) => (
+                      venues.slice(0, 2).map((venue) => (
                         <SimpleResult
-                          key={venue}
+                          key={venue.slug}
                           label="VENUE"
-                          title={venue}
-                          subtitle={event.city}
-                          href={`/search?q=${encodeURIComponent(venue)}`}
+                          title={venue.name}
+                          subtitle={venue.city}
+                          href={`/venues/${venue.slug}`}
                           onClick={() => setIsOpen(false)}
                         />
                       ))
@@ -257,13 +258,13 @@ export default function SearchModal({ events }: SearchModalProps) {
               {activeTab === "venues" && (
                 <div className="grid gap-4 md:grid-cols-2">
                   {venues.length > 0 ? (
-                    venues.map(([venue, event]) => (
+                    venues.map((venue) => (
                       <SimpleResult
-                        key={venue}
+                        key={venue.slug}
                         label="VENUE"
-                        title={venue}
-                        subtitle={event.city}
-                        href={`/search?q=${encodeURIComponent(venue)}`}
+                        title={venue.name}
+                        subtitle={venue.city}
+                        href={`/venues/${venue.slug}`}
                         onClick={() => setIsOpen(false)}
                       />
                     ))
@@ -349,7 +350,7 @@ function EventResult({ event }: { event: Event }) {
         </h4>
 
         <p className="truncate text-sm text-gray-500">
-          {event.event_date} · {event.venue}
+          {event.event_date} · {event.venue.name}
         </p>
       </div>
     </Link>
