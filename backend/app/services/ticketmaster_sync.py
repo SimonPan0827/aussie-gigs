@@ -689,3 +689,22 @@ def sync_ticketmaster_catalog(
         },
         "total": total,
     }
+
+
+def sync_ticketmaster_upcoming(
+    db: Session,
+    *,
+    city: str | None = None,
+    state_code: str | None = None,
+    keyword: str | None = None,
+    size: int = 100,
+) -> SyncResult:
+    return sync_ticketmaster_date_range(
+        db,
+        city=city,
+        state_code=state_code,
+        keyword=keyword,
+        start_date=date.today(),
+        end_date=None,
+        size=size,
+    )

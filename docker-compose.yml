@@ -32,6 +32,22 @@ services:
       db:
         condition: service_healthy
 
+  ticketmaster-sync:
+    build:
+      context: ./backend
+    image: aussie-gigs-backend:1.0
+    env_file:
+      - ./backend/.env.docker
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/aussie_gigs
+      TICKETMASTER_SYNC_INTERVAL_HOURS: 24
+    command: >
+      sh -c "alembic upgrade head &&
+             python -m app.jobs.sync_ticketmaster --loop"
+    depends_on:
+      db:
+        condition: service_healthy
+
   frontend:
     build:
       context: ./frontend

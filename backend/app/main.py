@@ -8,12 +8,20 @@ from sqlalchemy.orm import Session, joinedload, selectinload
 from app.db.database import get_db
 from app.models.artist import Artist
 from app.models.event import Event
+from app.models.sync_log import SyncLog
 from app.models.venue import Venue
+from app.services.sync_logs import (
+    complete_sync_log,
+    create_sync_log,
+    fail_sync_log,
+    serialize_sync_log,
+)
 from app.services.ticketmaster import TicketmasterError, search_events
 from app.services.ticketmaster_sync import (
     SyncResult,
     sync_ticketmaster_catalog,
     sync_ticketmaster_events,
+    sync_ticketmaster_upcoming,
 )
 
 
@@ -185,6 +193,15 @@ def sync_ticketmaster(
     page: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
 ):
+    sync_log = create_sync_log(
+        db,
+        source="ticketmaster",
+        sync_type="manual-page",
+        state_code=state_code,
+        city=city,
+        keyword=keyword,
+    )
+
     try:
         result = sync_ticketmaster_events(
             db,
@@ -197,8 +214,10 @@ def sync_ticketmaster(
             page=page,
         )
     except TicketmasterError as exc:
+        fail_sync_log(db, sync_log, exc)
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
+    complete_sync_log(db, sync_log, result)
     return serialize_sync_result(result)
 
 
@@ -210,6 +229,15 @@ def sync_ticketmaster_default_catalog(
     size: int = Query(default=100, ge=50, le=100),
     db: Session = Depends(get_db),
 ):
+    sync_log = create_sync_log(
+        db,
+        source="ticketmaster",
+        sync_type="manual-catalog",
+        state_code=state_code,
+        city=city,
+        keyword=keyword,
+    )
+
     try:
         result = sync_ticketmaster_catalog(
             db,
@@ -219,8 +247,10 @@ def sync_ticketmaster_default_catalog(
             size=size,
         )
     except TicketmasterError as exc:
+        fail_sync_log(db, sync_log, exc)
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 
+    complete_sync_log(db, sync_log, result["total"])
     return {
         "past_window": {
             "start_date": result["past_window"]["start_date"],
@@ -234,6 +264,58 @@ def sync_ticketmaster_default_catalog(
         },
         "total": serialize_sync_result(result["total"]),
     }
+
+
+@app.post("/integrations/ticketmaster/sync-upcoming")
+def sync_ticketmaster_upcoming_events(
+    city: str | None = None,
+    state_code: str | None = None,
+    keyword: str | None = None,
+    size: int = Query(default=100, ge=50, le=100),
+    db: Session = Depends(get_db),
+):
+    sync_log = create_sync_log(
+        db,
+        source="ticketmaster",
+        sync_type="manual-upcoming",
+        state_code=state_code,
+        city=city,
+        keyword=keyword,
+    )
+
+    try:
+        result = sync_ticketmaster_upcoming(
+            db,
+            city=city,
+            state_code=state_code,
+            keyword=keyword,
+            size=size,
+        )
+    except TicketmasterError as exc:
+        fail_sync_log(db, sync_log, exc)
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    complete_sync_log(db, sync_log, result)
+    return serialize_sync_result(result)
+
+
+@app.get("/integrations/sync-logs")
+def get_sync_logs(
+    source: str | None = None,
+    status: str | None = None,
+    limit: int = Query(default=20, ge=1, le=100),
+    db: Session = Depends(get_db),
+):
+    query = db.query(SyncLog)
+
+    if source:
+        query = query.filter(SyncLog.source == source)
+
+    if status:
+        query = query.filter(SyncLog.status == status)
+
+    sync_logs = query.order_by(SyncLog.started_at.desc()).limit(limit).all()
+    return [serialize_sync_log(sync_log) for sync_log in sync_logs]
 
 @app.get("/events")
 def get_events(

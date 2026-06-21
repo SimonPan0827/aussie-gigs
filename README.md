@@ -71,3 +71,33 @@ Event, artist, venue, and ticket data can be imported from Ticketmaster:
 ```bash
 curl -X POST "http://localhost:8000/integrations/ticketmaster/sync-catalog?state_code=VIC&size=100"
 ```
+
+Upcoming Ticketmaster events can also be synced manually:
+
+```bash
+curl -X POST "http://localhost:8000/integrations/ticketmaster/sync-upcoming?state_code=VIC&size=100"
+```
+
+Docker Compose also starts a `ticketmaster-sync` worker. It runs the upcoming
+Ticketmaster sync for every Australian state and territory every 24 hours. Each
+run writes a log row that can be checked with:
+
+```bash
+curl "http://localhost:8000/integrations/sync-logs?source=ticketmaster"
+```
+
+In production, `.github/workflows/scheduled-imports.yml` runs scheduled import
+jobs once per day through GitHub Actions. It currently syncs Ticketmaster
+upcoming events and expects these repository secrets:
+
+```text
+DATABASE_URL
+TICKETMASTER_API_KEY
+```
+
+Optional repository variables:
+
+```text
+TICKETMASTER_SYNC_STATES=ACT,NSW,NT,QLD,SA,TAS,VIC,WA
+TICKETMASTER_SYNC_PAGE_SIZE=100
+```
