@@ -2,6 +2,11 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import {
+  FALLBACK_ARTIST_IMAGE,
+  FALLBACK_EVENT_IMAGE,
+  imageOrFallback,
+} from "@/lib/images";
 import type { Event } from "@/types/event";
 import type { Artist } from "@/types/artist";
 import { AU_STATES, type AustralianState } from "@/types/location";
@@ -313,7 +318,7 @@ function EventResult({ event }: { event: Event }) {
       className="flex gap-4 rounded-2xl p-2 transition hover:bg-gray-50"
     >
       <img
-        src={event.image_url}
+        src={imageOrFallback(event.image_url, FALLBACK_EVENT_IMAGE)}
         alt={event.title}
         className="h-20 w-20 shrink-0 rounded-xl object-cover"
       />
@@ -404,7 +409,7 @@ function ArtistResult({
       className="flex items-center gap-4 rounded-2xl p-2 transition hover:bg-gray-50"
     >
       <img
-        src={artist.image_url}
+        src={imageOrFallback(artist.image_url, FALLBACK_ARTIST_IMAGE)}
         alt={artist.name}
         className="h-14 w-14 shrink-0 rounded-full object-cover"
       />

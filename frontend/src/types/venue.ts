@@ -8,7 +8,7 @@ export type Venue = {
   city: string;
   state: AustralianState;
   address: string;
-  image_url: string;
+  image_url: string | null;
 };
 
 export type VenueDetail = Venue & {

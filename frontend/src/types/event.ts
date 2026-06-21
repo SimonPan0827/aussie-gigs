@@ -25,7 +25,7 @@ export type Event = {
   artist: Artist;
   lineup: Artist[];
 
-  image_url: string;
+  image_url: string | null;
   youtube_embed_url?: string | null;
   status: string;
   ticket_links: TicketLink[];

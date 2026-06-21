@@ -1,6 +1,11 @@
 import Link from "next/link";
 import EventCard from "@/components/EventCard";
 import { fetchEvents } from "@/lib/api";
+import {
+  FALLBACK_ARTIST_IMAGE,
+  FALLBACK_VENUE_IMAGE,
+  imageOrFallback,
+} from "@/lib/images";
 import type { Event } from "@/types/event";
 import type { Artist } from "@/types/artist";
 import { GENRES, type Genre } from "@/types/genre";
@@ -9,6 +14,7 @@ import type { Venue } from "@/types/venue";
 import Navbar from "@/components/Navbar";
 import CustomDatePicker from "@/components/CustomDatePicker";
 import Pagination from "@/components/Pagination";
+import SearchLocationFilter from "@/components/SearchLocationFilter";
 
 function formatEventType(type?: string) {
   if (!type) return "All events";
@@ -118,22 +124,30 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   const params = await searchParams;
   const selectedState = getSelectedState(params.state);
   const selectedGenres = getSelectedGenres(params.genre);
-
+  const allEventsForNavbar: Event[] = await fetchEvents();
+  const cityOptionsByState = getCityOptionsByState(allEventsForNavbar);
+  const selectedCity = getSelectedCity(
+    params.city,
+    selectedState,
+    cityOptionsByState
+  );
+  const normalizedParams = {
+    ...params,
+    state: selectedState,
+    city: selectedCity,
+  };
   const activeTab = getActiveTab(params.tab);
 
   const events: Event[] = await fetchEvents({
     q: params.q,
     state: selectedState,
-    city: params.city,
+    city: selectedCity,
     event_type: params.event_type,
     genre: selectedGenres,
     start_date: params.start_date,
     end_date: params.end_date,
   });
 
-  const allEventsForNavbar: Event[] = await fetchEvents();
-  const cityOptions = getCityOptions(allEventsForNavbar, selectedState);
-  
   const today = getTodayDateString();
 
   const sortedEvents = [...events].sort((a, b) => {
@@ -188,7 +202,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
 
   const artists = getUniqueArtists(events);
   const venues = getUniqueVenues(events);
-  const currentSearchHref = buildSearchHref(params, {});
+  const currentSearchHref = buildSearchHref(normalizedParams, {});
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -207,26 +221,30 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
 
           {/* Search bar */}
           <form action="/search" className="mt-10 max-w-6xl">
-            <div className="flex items-center gap-3 rounded-full bg-white px-5 py-3">
+            <div className="flex flex-wrap items-center gap-3 rounded-[2rem] bg-white px-5 py-3 md:flex-nowrap md:rounded-full">
+              <SearchLocationFilter
+                selectedState={selectedState}
+                selectedCity={selectedCity}
+                cityOptionsByState={cityOptionsByState}
+                q={params.q}
+                eventType={params.event_type}
+                genres={selectedGenres}
+                startDate={params.start_date}
+                endDate={params.end_date}
+                tab={params.tab}
+              />
+
               <span className="text-gray-400">⌕</span>
 
               <input
                 name="q"
                 defaultValue={params.q || ""}
                 placeholder="Search artist, event, venue or city"
-                className="flex-1 bg-transparent text-base text-black outline-none"
+                className="min-w-48 flex-1 bg-transparent text-base text-black outline-none"
               />
 
               {params.event_type && (
                 <input type="hidden" name="event_type" value={params.event_type} />
-              )}
-
-              {selectedState && (
-                <input type="hidden" name="state" value={selectedState} />
-              )}
-
-              {params.city && (
-                <input type="hidden" name="city" value={params.city} />
               )}
 
               {selectedGenres.map((genre) => (
@@ -252,78 +270,6 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
             </div>
           </form>
 
-          <form
-            action="/search"
-            className="mt-5 max-w-6xl rounded-2xl border border-white/10 bg-white/5 p-4"
-          >
-            <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
-              <label className="block">
-                <span className="mb-2 block text-sm font-medium text-gray-300">
-                  State
-                </span>
-                <select
-                  name="state"
-                  defaultValue={selectedState || ""}
-                  className="w-full rounded-full border border-white/10 bg-white px-4 py-3 text-sm font-medium text-black outline-none"
-                >
-                  <option value="">All states</option>
-                  {AU_STATES.map((state) => (
-                    <option key={state.code} value={state.code}>
-                      {state.code}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="block">
-                <span className="mb-2 block text-sm font-medium text-gray-300">
-                  City
-                </span>
-                <select
-                  name="city"
-                  defaultValue={params.city || ""}
-                  className="w-full rounded-full border border-white/10 bg-white px-4 py-3 text-sm font-medium text-black outline-none"
-                >
-                  <option value="">All cities</option>
-                  {cityOptions.map((city) => (
-                    <option key={city} value={city}>
-                      {city}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <div className="flex items-end">
-                <button
-                  type="submit"
-                  className="w-full rounded-full bg-white px-6 py-3 text-sm font-medium text-black transition hover:bg-gray-200 md:w-auto"
-                >
-                  Apply
-                </button>
-              </div>
-
-              <input type="hidden" name="q" value={params.q || ""} />
-
-              {params.event_type && (
-                <input type="hidden" name="event_type" value={params.event_type} />
-              )}
-
-              {selectedGenres.map((genre) => (
-                <input key={genre} type="hidden" name="genre" value={genre} />
-              ))}
-
-              {params.start_date && (
-                <input type="hidden" name="start_date" value={params.start_date} />
-              )}
-
-              {params.end_date && (
-                <input type="hidden" name="end_date" value={params.end_date} />
-              )}
-
-              <input type="hidden" name="tab" value={params.tab || "all"} />
-            </div>
-          </form>
-
           {/* Date filter */}
           <form
             action="/search"
@@ -338,7 +284,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                 name="start_date"
                 value={params.start_date || ""}
                 minDate={getTodayDateString()}
-                clearHref={buildSearchHref(params, {
+                clearHref={buildSearchHref(normalizedParams, {
                   start_date: null,
                   page: null,
                 })}
@@ -348,7 +294,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                 name="end_date"
                 value={params.end_date || ""}
                 minDate={params.start_date || getTodayDateString()}
-                clearHref={buildSearchHref(params, {
+                clearHref={buildSearchHref(normalizedParams, {
                   end_date: null,
                   page: null,
                 })}
@@ -364,8 +310,8 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                 <input type="hidden" name="state" value={selectedState} />
               )}
 
-              {params.city && (
-                <input type="hidden" name="city" value={params.city} />
+              {selectedCity && (
+                <input type="hidden" name="city" value={selectedCity} />
               )}
 
               {selectedGenres.map((genre) => (
@@ -396,7 +342,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                 return (
                   <Link
                     key={genre}
-                    href={buildSearchHref(params, {
+                    href={buildSearchHref(normalizedParams, {
                       genre: nextGenres,
                       page: null,
                     })}
@@ -458,7 +404,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                 return (
                   <Link
                     key={value}
-                    href={buildSearchHref(params, {
+                    href={buildSearchHref(normalizedParams, {
                       tab: tabValue,
                       page: null,
                     })}
@@ -519,7 +465,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
             <Pagination
               currentPage={safeCurrentPage}
               totalPages={totalPages}
-              buildPageHref={(page) => buildSearchHref(params, { page })}
+              buildPageHref={(page) => buildSearchHref(normalizedParams, { page })}
             />
           </>
         )}
@@ -533,7 +479,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                 className="flex items-center gap-4 rounded-2xl border bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
               >
                 <img
-                  src={artist.image_url}
+                  src={imageOrFallback(artist.image_url, FALLBACK_ARTIST_IMAGE)}
                   alt={artist.name}
                   className="h-16 w-16 rounded-full object-cover"
                 />
@@ -565,7 +511,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                 className="rounded-2xl border bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
               >
                 <img
-                  src={venue.image_url}
+                  src={imageOrFallback(venue.image_url, FALLBACK_VENUE_IMAGE)}
                   alt={venue.name}
                   className="h-40 w-full rounded-xl object-cover"
                 />
@@ -603,16 +549,40 @@ function getSelectedState(state?: string): AustralianState | undefined {
     : undefined;
 }
 
-function getCityOptions(events: Event[], state?: AustralianState) {
-  const cities = new Set<string>();
+function getCityOptionsByState(events: Event[]) {
+  const cityOptionsByState = AU_STATES.reduce(
+    (options, state) => ({
+      ...options,
+      [state.code]: new Set<string>(),
+    }),
+    {} as Record<AustralianState, Set<string>>
+  );
 
   events.forEach((event) => {
-    if (!state || event.state === state) {
-      cities.add(event.city);
+    if (event.city && cityOptionsByState[event.state]) {
+      cityOptionsByState[event.state].add(event.city);
     }
   });
 
-  return Array.from(cities).sort((a, b) => a.localeCompare(b));
+  return AU_STATES.reduce(
+    (options, state) => ({
+      ...options,
+      [state.code]: Array.from(cityOptionsByState[state.code]).sort((a, b) =>
+        a.localeCompare(b)
+      ),
+    }),
+    {} as Record<AustralianState, string[]>
+  );
+}
+
+function getSelectedCity(
+  city: string | undefined,
+  state: AustralianState | undefined,
+  cityOptionsByState: Record<AustralianState, string[]>
+) {
+  if (!city || !state) return undefined;
+
+  return cityOptionsByState[state]?.includes(city) ? city : undefined;
 }
 
 function buildSearchHref(

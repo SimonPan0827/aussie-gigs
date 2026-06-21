@@ -1,5 +1,10 @@
 import Link from "next/link";
 import { fetchEventBySlug, fetchEvents } from "@/lib/api";
+import {
+  FALLBACK_ARTIST_IMAGE,
+  FALLBACK_EVENT_IMAGE,
+  imageOrFallback,
+} from "@/lib/images";
 import type { Event } from "@/types/event";
 import Navbar from "@/components/Navbar";
 
@@ -59,7 +64,7 @@ export default async function EventDetailPage({
           </div>
 
           <img
-            src={event.image_url}
+            src={imageOrFallback(event.image_url, FALLBACK_EVENT_IMAGE)}
             alt={event.title}
             className="h-72 w-full rounded-3xl object-cover shadow-lg"
           />
@@ -79,7 +84,7 @@ export default async function EventDetailPage({
               className="flex items-center gap-4 py-4 transition hover:bg-gray-50"
             >
               <img
-                src={artist.image_url}
+                src={imageOrFallback(artist.image_url, FALLBACK_ARTIST_IMAGE)}
                 alt={artist.name}
                 className="shrink-0 rounded-full object-cover"
                 style={{

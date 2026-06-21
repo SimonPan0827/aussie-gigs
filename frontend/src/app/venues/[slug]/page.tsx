@@ -2,6 +2,7 @@ import Link from "next/link";
 import EventCard from "@/components/EventCard";
 import Navbar from "@/components/Navbar";
 import { fetchEvents, fetchVenueBySlug } from "@/lib/api";
+import { FALLBACK_VENUE_IMAGE, imageOrFallback } from "@/lib/images";
 import type { Event } from "@/types/event";
 import type { VenueDetail } from "@/types/venue";
 
@@ -57,7 +58,7 @@ export default async function VenueDetailPage({
       <section className="bg-black px-6 py-16 text-white">
         <div className="mx-auto grid max-w-6xl gap-10 md:grid-cols-[0.9fr_1.1fr] md:items-center">
           <img
-            src={venue.image_url}
+            src={imageOrFallback(venue.image_url, FALLBACK_VENUE_IMAGE)}
             alt={venue.name}
             className="h-80 w-full rounded-3xl object-cover shadow-lg"
           />

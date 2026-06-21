@@ -1,6 +1,7 @@
 import EventCard from "@/components/EventCard";
 import Navbar from "@/components/Navbar";
 import { fetchArtistBySlug, fetchEvents } from "@/lib/api";
+import { FALLBACK_ARTIST_IMAGE, imageOrFallback } from "@/lib/images";
 import type { ArtistDetail } from "@/types/artist";
 import type { Event } from "@/types/event";
 
@@ -56,7 +57,7 @@ export default async function ArtistDetailPage({
       <section className="bg-black px-6 py-16 text-white">
         <div className="mx-auto flex max-w-6xl flex-col gap-8 md:flex-row md:items-center">
           <img
-            src={artist.image_url}
+            src={imageOrFallback(artist.image_url, FALLBACK_ARTIST_IMAGE)}
             alt={artist.name}
             className="h-32 w-32 rounded-full object-cover ring-4 ring-white/20"
           />

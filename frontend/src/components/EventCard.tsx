@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { FALLBACK_EVENT_IMAGE, imageOrFallback } from "@/lib/images";
 import type { Event } from "@/types/event";
 
 type EventCardProps = {
@@ -23,7 +24,7 @@ export default function EventCard({
       }`}
     >
       <img
-        src={event.image_url}
+        src={imageOrFallback(event.image_url, FALLBACK_EVENT_IMAGE)}
         alt={event.title}
         className={`h-48 w-full object-cover ${isPast ? "grayscale" : ""}`}
       />

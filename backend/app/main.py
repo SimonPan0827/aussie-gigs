@@ -1,3 +1,5 @@
+from datetime import date
+
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from rapidfuzz import fuzz
@@ -7,6 +9,12 @@ from app.db.database import get_db
 from app.models.artist import Artist
 from app.models.event import Event
 from app.models.venue import Venue
+from app.services.ticketmaster import TicketmasterError, search_events
+from app.services.ticketmaster_sync import (
+    SyncResult,
+    sync_ticketmaster_catalog,
+    sync_ticketmaster_events,
+)
 
 
 app = FastAPI(title="Aussie Gigs API")
@@ -92,6 +100,140 @@ def event_query(db: Session):
 @app.get("/")
 def health_check():
     return {"status": "ok", "message": "Aussie Gigs API is running"}
+
+
+def ticketmaster_preview_event(item: dict):
+    embedded = item.get("_embedded") or {}
+    venues = embedded.get("venues") or []
+    attractions = embedded.get("attractions") or []
+    start = (item.get("dates") or {}).get("start") or {}
+
+    return {
+        "external_id": item.get("id"),
+        "title": item.get("name"),
+        "date": start.get("localDate"),
+        "time": start.get("localTime"),
+        "venue": venues[0].get("name") if venues else None,
+        "city": ((venues[0].get("city") or {}).get("name") if venues else None),
+        "state": (
+            ((venues[0].get("state") or {}).get("stateCode") if venues else None)
+        ),
+        "artists": [
+            attraction.get("name")
+            for attraction in attractions
+            if attraction.get("name")
+        ],
+        "url": item.get("url"),
+    }
+
+
+def serialize_sync_result(result: SyncResult):
+    return {
+        "created_events": result.created_events,
+        "updated_events": result.updated_events,
+        "created_artists": result.created_artists,
+        "matched_artists": result.matched_artists,
+        "created_venues": result.created_venues,
+        "matched_venues": result.matched_venues,
+        "skipped_events": result.skipped_events,
+        "fetched_events": result.fetched_events,
+        "pages_fetched": result.pages_fetched,
+        "reached_ticketmaster_page_limit": result.reached_ticketmaster_page_limit,
+    }
+
+
+@app.get("/integrations/ticketmaster/events")
+def preview_ticketmaster_events(
+    city: str | None = None,
+    state_code: str | None = None,
+    keyword: str | None = None,
+    start_date: date | None = None,
+    end_date: date | None = None,
+    size: int = Query(default=20, ge=1, le=100),
+    page: int = Query(default=0, ge=0),
+):
+    try:
+        payload = search_events(
+            city=city,
+            state_code=state_code,
+            keyword=keyword,
+            start_date=start_date,
+            end_date=end_date,
+            size=size,
+            page=page,
+        )
+    except TicketmasterError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    events = (payload.get("_embedded") or {}).get("events") or []
+
+    return {
+        "count": len(events),
+        "page": payload.get("page"),
+        "events": [ticketmaster_preview_event(item) for item in events],
+    }
+
+
+@app.post("/integrations/ticketmaster/sync")
+def sync_ticketmaster(
+    city: str | None = None,
+    state_code: str | None = None,
+    keyword: str | None = None,
+    start_date: date | None = None,
+    end_date: date | None = None,
+    size: int = Query(default=20, ge=1, le=100),
+    page: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+):
+    try:
+        result = sync_ticketmaster_events(
+            db,
+            city=city,
+            state_code=state_code,
+            keyword=keyword,
+            start_date=start_date,
+            end_date=end_date,
+            size=size,
+            page=page,
+        )
+    except TicketmasterError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    return serialize_sync_result(result)
+
+
+@app.post("/integrations/ticketmaster/sync-catalog")
+def sync_ticketmaster_default_catalog(
+    city: str | None = None,
+    state_code: str | None = None,
+    keyword: str | None = None,
+    size: int = Query(default=100, ge=50, le=100),
+    db: Session = Depends(get_db),
+):
+    try:
+        result = sync_ticketmaster_catalog(
+            db,
+            city=city,
+            state_code=state_code,
+            keyword=keyword,
+            size=size,
+        )
+    except TicketmasterError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    return {
+        "past_window": {
+            "start_date": result["past_window"]["start_date"],
+            "end_date": result["past_window"]["end_date"],
+            "result": serialize_sync_result(result["past_window"]["result"]),
+        },
+        "upcoming_window": {
+            "start_date": result["upcoming_window"]["start_date"],
+            "end_date": result["upcoming_window"]["end_date"],
+            "result": serialize_sync_result(result["upcoming_window"]["result"]),
+        },
+        "total": serialize_sync_result(result["total"]),
+    }
 
 @app.get("/events")
 def get_events(
