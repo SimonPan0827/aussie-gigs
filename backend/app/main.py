@@ -143,6 +143,16 @@ def serialize_event_list(events: list[Event], page: int | None, per_page: int | 
         "total_pages": max((total + safe_per_page - 1) // safe_per_page, 1),
     }
 
+
+def serialize_event_page(events: list[Event], total: int, page: int, per_page: int):
+    return {
+        "items": [serialize_event(event) for event in events],
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+        "total_pages": max((total + per_page - 1) // per_page, 1),
+    }
+
 @app.get("/")
 def health_check():
     return {"status": "ok", "message": "Aussie Gigs API is running"}
@@ -389,9 +399,8 @@ def get_events(
     if end_date:
         query = query.filter(Event.event_date <= end_date)
 
-    events = query.order_by(Event.event_date, Event.event_time).all()
-
     if q:
+        events = query.order_by(Event.event_date, Event.event_time).all()
         normalized_query = normalize_search_text(q)
 
         events = [
@@ -406,6 +415,21 @@ def get_events(
             )
         ]
 
+        return serialize_event_list(events, page, per_page)
+
+    if page is not None or per_page is not None:
+        safe_page = page or 1
+        safe_per_page = per_page or 10
+        total = query.count()
+        events = (
+            query.order_by(Event.event_date, Event.event_time)
+            .offset((safe_page - 1) * safe_per_page)
+            .limit(safe_per_page)
+            .all()
+        )
+        return serialize_event_page(events, total, safe_page, safe_per_page)
+
+    events = query.order_by(Event.event_date, Event.event_time).all()
     return serialize_event_list(events, page, per_page)
 
 

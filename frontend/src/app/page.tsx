@@ -29,7 +29,7 @@ export default async function HomePage() {
       <Navbar events={featuredEvents} />
 
       {/* Hero section */}
-      <section className="relative overflow-hidden bg-black px-6 pb-20 pt-12 text-white">
+      <section className="relative overflow-hidden bg-black px-6 pb-16 pt-10 text-white sm:pb-20 sm:pt-12">
         {/* Background image */}
         <div
           className="absolute inset-0 bg-cover bg-center opacity-45"
@@ -43,15 +43,15 @@ export default async function HomePage() {
 
         {/* Hero content */}
         <div className="relative z-10 mx-auto max-w-6xl">
-          <p className="text-sm uppercase tracking-widest text-gray-300">
+          <p className="text-xs uppercase tracking-widest text-gray-300 sm:text-sm">
             Live music in Australia
           </p>
 
-          <h1 className="mt-4 max-w-3xl text-5xl font-bold">
+          <h1 className="mt-4 max-w-3xl text-4xl font-bold leading-tight sm:text-5xl">
             Discover upcoming concerts, gigs and festivals across Australia.
           </h1>
 
-          <p className="mt-6 max-w-2xl text-lg text-gray-200">
+          <p className="mt-5 max-w-2xl text-base leading-7 text-gray-200 sm:mt-6 sm:text-lg">
             Search live music events by city, artist and venue, then jump directly to
             official ticket links.
           </p>
@@ -59,75 +59,75 @@ export default async function HomePage() {
       </section>
 
       {/* 4 Type Block */}
-      <section className="mx-auto max-w-6xl px-6 py-10">
-        <h2 className="mb-5 text-2xl font-semibold text-gray-900">
+      <section className="mx-auto max-w-6xl px-6 py-9 sm:py-10">
+        <h2 className="mb-5 text-xl font-semibold text-gray-900 sm:text-2xl">
           Browse by event type
         </h2>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           <Link
             href="/search?event_type=concert"
-            className="rounded-2xl border bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+            className="rounded-2xl border bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-md sm:p-6"
           >
-            <p className="text-3xl">🎤</p>
-            <h3 className="mt-4 text-xl font-semibold text-gray-900">
+            <p className="text-2xl sm:text-3xl">🎤</p>
+            <h3 className="mt-3 text-base font-semibold text-gray-900 sm:mt-4 sm:text-xl">
               Concert
             </h3>
-            <p className="mt-2 text-sm text-gray-500">
+            <p className="mt-2 text-xs leading-5 text-gray-500 sm:text-sm">
               Live shows from local and international artists.
             </p>
           </Link>
 
           <Link
             href="/search?event_type=festival"
-            className="rounded-2xl border bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+            className="rounded-2xl border bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-md sm:p-6"
           >
-            <p className="text-3xl">🎪</p>
-            <h3 className="mt-4 text-xl font-semibold text-gray-900">
+            <p className="text-2xl sm:text-3xl">🎪</p>
+            <h3 className="mt-3 text-base font-semibold text-gray-900 sm:mt-4 sm:text-xl">
               Festival
             </h3>
-            <p className="mt-2 text-sm text-gray-500">
+            <p className="mt-2 text-xs leading-5 text-gray-500 sm:text-sm">
               Multi-stage music festivals across Australia.
             </p>
           </Link>
 
           <Link
             href="/search?event_type=dj-set"
-            className="rounded-2xl border bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+            className="rounded-2xl border bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-md sm:p-6"
           >
-            <p className="text-3xl">🎧</p>
-            <h3 className="mt-4 text-xl font-semibold text-gray-900">
+            <p className="text-2xl sm:text-3xl">🎧</p>
+            <h3 className="mt-3 text-base font-semibold text-gray-900 sm:mt-4 sm:text-xl">
               DJ Set
             </h3>
-            <p className="mt-2 text-sm text-gray-500">
+            <p className="mt-2 text-xs leading-5 text-gray-500 sm:text-sm">
               Electronic, club and late-night DJ events.
             </p>
           </Link>
 
           <Link
             href="/search"
-            className="group relative flex min-h-56 overflow-hidden rounded-2xl border border-black bg-black p-6 text-white shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+            className="group relative flex min-h-40 overflow-hidden rounded-2xl border border-black bg-black p-4 text-white shadow-sm transition hover:-translate-y-1 hover:shadow-md sm:min-h-56 sm:p-6"
           >
             <div className="absolute -right-12 -top-12 h-32 w-32 rounded-full bg-white/10" />
             <div className="absolute -bottom-16 left-8 h-28 w-28 rounded-full bg-white/5" />
 
             <div className="relative z-10 flex w-full flex-col justify-between">
               <div>
-                <span className="inline-flex rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-gray-200">
+                <span className="inline-flex rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-gray-200 sm:px-3 sm:text-xs">
                   All events
                 </span>
 
-                <h3 className="mt-5 text-2xl font-semibold">All gigs</h3>
-                <p className="mt-2 max-w-52 text-sm leading-6 text-gray-300">
+                <h3 className="mt-4 text-lg font-semibold sm:mt-5 sm:text-2xl">All gigs</h3>
+                <p className="mt-2 max-w-52 text-xs leading-5 text-gray-300 sm:text-sm sm:leading-6">
                   Explore every upcoming gig across Australia.
                 </p>
               </div>
 
-              <div className="mt-6 flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-400">
+              <div className="mt-5 flex items-center justify-between sm:mt-6">
+                <span className="text-xs font-medium text-gray-400 sm:text-sm">
                   Browse all
                 </span>
-                <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-2xl text-black transition group-hover:translate-x-1">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-xl text-black transition group-hover:translate-x-1 sm:h-11 sm:w-11 sm:text-2xl">
                   →
                 </span>
               </div>
