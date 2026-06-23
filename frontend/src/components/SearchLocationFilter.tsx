@@ -132,7 +132,7 @@ export default function SearchLocationFilter({
   return (
     <div
       ref={filterRef}
-      className="relative z-30 flex shrink-0 items-center gap-2"
+      className="relative z-30 grid grid-cols-2 gap-2 sm:flex sm:shrink-0 sm:items-center"
     >
       <DropdownButton
         label="State"
@@ -190,14 +190,14 @@ function DropdownButton({
   emptyMessage = "No options available",
 }: DropdownButtonProps) {
   return (
-    <div className="relative">
+    <div className="relative min-w-0">
       <button
         type="button"
         disabled={disabled}
         aria-label={label}
         aria-expanded={isOpen}
         onClick={onToggle}
-        className="flex h-10 min-w-24 items-center justify-between gap-2 rounded-full border border-gray-200 bg-gray-100 px-4 text-sm font-semibold text-gray-900 transition hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-black/20 disabled:cursor-not-allowed disabled:text-gray-400"
+        className="flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-full border border-gray-200 bg-gray-100 px-4 text-sm font-semibold text-gray-900 transition hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-black/20 disabled:cursor-not-allowed disabled:text-gray-400 sm:min-w-24"
       >
         <span className="max-w-28 truncate">{displayValue}</span>
         <span
@@ -211,7 +211,7 @@ function DropdownButton({
       </button>
 
       {isOpen && (
-        <div className="absolute left-0 top-[calc(100%+0.5rem)] z-40 w-60 overflow-hidden rounded-2xl border border-gray-200 bg-white py-2 text-black shadow-2xl ring-1 ring-black/10">
+        <div className="absolute left-0 top-[calc(100%+0.5rem)] z-40 w-[min(18rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-gray-200 bg-white py-2 text-black shadow-2xl ring-1 ring-black/10">
           {options.length > 0 ? (
             <div className="max-h-80 overflow-y-auto px-2" role="listbox">
               {options.map((option) => {

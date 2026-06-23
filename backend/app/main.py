@@ -35,12 +35,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-def is_fuzzy_match(query: str, text: str, threshold: int = 70) -> bool:
+def normalize_search_text(text: str) -> str:
+    return " ".join(text.lower().split())
+
+
+def is_search_match(query: str, text: str) -> bool:
     if not query or not text:
         return False
 
-    score = fuzz.partial_ratio(query.lower(), text.lower())
-    return score >= threshold
+    normalized_query = normalize_search_text(query)
+    normalized_text = normalize_search_text(text)
+
+    if not normalized_query or not normalized_text:
+        return False
+
+    if normalized_query in normalized_text:
+        return True
+
+    if len(normalized_query) < 4:
+        return False
+
+    score = fuzz.token_set_ratio(normalized_query, normalized_text)
+    return score >= 88
 
 
 def serialize_artist(artist: Artist):
@@ -355,18 +371,16 @@ def get_events(
     ]
 
     if q:
-        normalized_query = q.lower()
+        normalized_query = normalize_search_text(q)
 
         events = [
             event for event in events
-            if is_fuzzy_match(normalized_query, event["title"])
-            or is_fuzzy_match(normalized_query, event["artist"]["name"])
-            or is_fuzzy_match(normalized_query, event["venue"]["name"])
-            or is_fuzzy_match(normalized_query, event["city"])
-            or is_fuzzy_match(normalized_query, event["state"])
-            or is_fuzzy_match(normalized_query, event["genre"])
+            if is_search_match(normalized_query, event["title"])
+            or is_search_match(normalized_query, event["artist"]["name"])
+            or is_search_match(normalized_query, event["venue"]["name"])
+            or is_search_match(normalized_query, event["city"])
             or any(
-                is_fuzzy_match(normalized_query, artist["name"])
+                is_search_match(normalized_query, artist["name"])
                 for artist in event["lineup"]
             )
         ]

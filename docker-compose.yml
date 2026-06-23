@@ -51,6 +51,8 @@ services:
   frontend:
     build:
       context: ./frontend
+      args:
+        NEXT_PUBLIC_API_BASE_URL: http://backend:8000
     image: aussie-gigs-frontend:1.0
     ports:
       - "3000:3000"

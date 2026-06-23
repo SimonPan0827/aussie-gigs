@@ -207,21 +207,21 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   return (
     <main className="min-h-screen bg-gray-50">
       <Navbar events={allEventsForNavbar} />
-      <section className="bg-black px-6 py-16 text-white">
+      <section className="bg-black px-4 pb-8 pt-4 text-white sm:px-6 sm:py-16">
         <div className="mx-auto max-w-6xl">
           <Link href="/" className="text-sm text-gray-300 hover:text-white">
             ← Back home
           </Link>
 
-          <h1 className="mt-8 text-5xl font-bold">Search events</h1>
+          <h1 className="mt-6 text-4xl font-bold sm:mt-8 sm:text-5xl">Search events</h1>
 
-          <p className="mt-4 max-w-2xl text-gray-300">
+          <p className="mt-3 max-w-2xl text-gray-300 sm:mt-4">
             Find upcoming concerts, gigs and festivals across Australia.
           </p>
 
           {/* Search bar */}
-          <form action="/search" className="mt-10 max-w-6xl">
-            <div className="flex flex-wrap items-center gap-3 rounded-[2rem] bg-white px-5 py-3 md:flex-nowrap md:rounded-full">
+          <form action="/search" className="mt-8 max-w-6xl sm:mt-10">
+            <div className="grid gap-3 rounded-[1.75rem] bg-white p-4 sm:flex sm:flex-wrap sm:items-center sm:rounded-full sm:px-5 sm:py-3 md:flex-nowrap">
               <SearchLocationFilter
                 selectedState={selectedState}
                 selectedCity={selectedCity}
@@ -234,14 +234,16 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                 tab={params.tab}
               />
 
-              <span className="text-gray-400">⌕</span>
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <span className="shrink-0 text-gray-400">⌕</span>
 
-              <input
-                name="q"
-                defaultValue={params.q || ""}
-                placeholder="Search artist, event, venue or city"
-                className="min-w-48 flex-1 bg-transparent text-base text-black outline-none"
-              />
+                <input
+                  name="q"
+                  defaultValue={params.q || ""}
+                  placeholder="Search artist, event, venue or city"
+                  className="min-w-0 flex-1 bg-transparent text-base text-black outline-none"
+                />
+              </div>
 
               {params.event_type && (
                 <input type="hidden" name="event_type" value={params.event_type} />
@@ -263,7 +265,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
 
               <button
                 type="submit"
-                className="rounded-full bg-black px-5 py-2 text-sm font-medium text-white transition hover:bg-gray-800"
+                className="h-11 rounded-full bg-black px-5 text-sm font-medium text-white transition hover:bg-gray-800 sm:h-auto sm:py-2"
               >
                 Search
               </button>
@@ -273,10 +275,10 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
           {/* Date filter */}
           <form
             action="/search"
-            className="mt-5 max-w-6xl rounded-2xl border border-white/10 bg-white/5 p-4"
+            className="mt-4 max-w-6xl rounded-2xl border border-white/10 bg-white/5 p-4 sm:mt-5"
           >
-            <div className="flex items-center gap-3">
-              <p className="shrink-0 whitespace-nowrap text-sm font-medium text-gray-300">
+            <div className="grid grid-cols-2 items-center gap-3 sm:flex">
+              <p className="col-span-2 shrink-0 whitespace-nowrap text-sm font-medium text-gray-300 sm:col-span-1">
                 Filter by day
               </p>
 
@@ -322,13 +324,13 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
 
               <button
                 type="submit"
-                className="shrink-0 whitespace-nowrap rounded-full bg-white px-6 py-3 text-sm font-medium text-black transition hover:bg-gray-200"
+                className="col-span-2 shrink-0 whitespace-nowrap rounded-full bg-white px-6 py-3 text-sm font-medium text-black transition hover:bg-gray-200 sm:col-span-1"
               >
                 Apply
               </button>
             </div>
           </form>
-          <div className="mt-6">
+          <div className="mt-5 sm:mt-6">
             <p className="mb-3 text-sm font-semibold text-gray-300">Genre</p>
 
             <div className="flex flex-wrap gap-2">
@@ -362,8 +364,8 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
         </div>
       </section>
 
-      <section className="mx-auto max-w-6xl px-6 py-12">
-        <div className="mb-6 flex items-end justify-between gap-4">
+      <section className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-12">
+        <div className="mb-6 grid gap-4 sm:flex sm:items-end sm:justify-between">
           <div>
             <h2 className="text-2xl font-semibold text-gray-900">
               {formatEventType(params.event_type)}
@@ -389,7 +391,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
             </p>
             
           </div>
-            <div className="mt-6 flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-3 sm:mt-6">
               {[
                 ["all", "All results"],
                 ["upcoming", "Upcoming"],
@@ -438,7 +440,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
                       <div className="h-px flex-1 bg-gray-200" />
                     </div>
 
-                    <div className="grid gap-6 md:grid-cols-2">
+                    <div className="grid grid-cols-2 gap-3 sm:gap-6">
                       {groupedEvents[date].map((event) => (
                         <EventCard
                           key={event.id}

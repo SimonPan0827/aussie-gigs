@@ -6,6 +6,7 @@ import Link from "next/link";
 
 export default async function HomePage() {
   const events: Event[] = await fetchEvents();
+  const featuredEvents = events.slice(0, 10);
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -125,12 +126,27 @@ export default async function HomePage() {
       <section className="mx-auto max-w-6xl px-6 py-12">
         <h2 className="mb-6 text-2xl font-semibold">Upcoming events</h2>
 
-        <div className="grid gap-6 md:grid-cols-2">
-          {events.map((event) => (
+        <div className="grid grid-cols-2 gap-3 sm:gap-6">
+          {featuredEvents.map((event) => (
             <EventCard key={event.id} event={event} />
           ))}
         </div>
+
+        {events.length > featuredEvents.length && (
+          <div className="mt-8 flex justify-center">
+            <Link
+              href="/search"
+              className="rounded-full bg-black px-6 py-3 text-sm font-semibold text-white transition hover:bg-gray-800"
+            >
+              Browse all
+            </Link>
+          </div>
+        )}
       </section>
+
+      <footer className="border-t bg-white px-6 py-6 text-center text-sm text-gray-500">
+        © 2026 AussieGigsSimonPan. All rights reserved.
+      </footer>
     </main>
   );
 }

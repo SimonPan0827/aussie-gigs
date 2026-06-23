@@ -88,10 +88,12 @@ export default function SearchModal({ events }: SearchModalProps) {
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="flex w-full max-w-md items-center gap-3 rounded-full bg-white px-5 py-3 text-left text-sm text-gray-500 shadow-sm transition hover:bg-gray-100"
+        className="flex w-[min(15.75rem,58vw)] items-center gap-3 rounded-full bg-white px-5 py-3 text-left text-sm text-gray-500 shadow-sm transition hover:bg-gray-100 sm:w-80 md:w-96"
       >
-        <span className="text-lg">⌕</span>
-        <span>Search events, artists or venues</span>
+        <span className="shrink-0 text-lg">⌕</span>
+        <span className="min-w-0 truncate">
+          Search events, artists or venues
+        </span>
       </button>
 
       {isOpen && (
