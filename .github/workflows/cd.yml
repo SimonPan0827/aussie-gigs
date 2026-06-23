@@ -16,13 +16,10 @@ concurrency:
 jobs:
   deploy-backend:
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' || 
-        contains(join(github.event.commits.*.modified, ','), '.github/workflows/cd.yml') ||
-        contains(join(github.event.commits.*.added, ','), '.github/workflows/cd.yml') ||
-        contains(join(github.event.commits.*.removed, ','), '.github/workflows/cd.yml') ||
-        contains(join(github.event.commits.*.modified, ','), 'backend/') ||
-        contains(join(github.event.commits.*.added, ','), 'backend/') ||
-        contains(join(github.event.commits.*.removed, ','), 'backend/')
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      contains(toJSON(github.event.commits), '.github/workflows/cd.yml') ||
+      contains(toJSON(github.event.commits), 'backend/')
     steps:
       - uses: actions/checkout@v4
       - uses: aws-actions/configure-aws-credentials@v4
@@ -41,13 +38,10 @@ jobs:
 
   deploy-frontend:
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' || 
-        contains(join(github.event.commits.*.modified, ','), '.github/workflows/cd.yml') ||
-        contains(join(github.event.commits.*.added, ','), '.github/workflows/cd.yml') ||
-        contains(join(github.event.commits.*.removed, ','), '.github/workflows/cd.yml') ||
-        contains(join(github.event.commits.*.modified, ','), 'frontend/') ||
-        contains(join(github.event.commits.*.added, ','), 'frontend/') ||
-        contains(join(github.event.commits.*.removed, ','), 'frontend/')
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      contains(toJSON(github.event.commits), '.github/workflows/cd.yml') ||
+      contains(toJSON(github.event.commits), 'frontend/')
     steps:
       - uses: actions/checkout@v4
       - uses: aws-actions/configure-aws-credentials@v4
