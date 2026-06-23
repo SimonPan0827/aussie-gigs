@@ -1,17 +1,32 @@
 import EventCard from "@/components/EventCard";
 import Navbar from "@/components/Navbar";
-import { fetchEvents } from "@/lib/api";
+import { fetchEventsPage } from "@/lib/api";
 import type { Event } from "@/types/event";
 import Link from "next/link";
 
+function getTodayDateString() {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Australia/Melbourne",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+
+  return formatter.format(new Date());
+}
+
 export default async function HomePage() {
-  const events: Event[] = await fetchEvents();
-  const featuredEvents = events.slice(0, 10);
+  const eventsPage = await fetchEventsPage({
+    start_date: getTodayDateString(),
+    page: 1,
+    per_page: 10,
+  });
+  const featuredEvents: Event[] = eventsPage.items;
 
   return (
     <main className="min-h-screen bg-gray-50">
       {/* Top Navigation */}
-      <Navbar events={events} />
+      <Navbar events={featuredEvents} />
 
       {/* Hero section */}
       <section className="relative overflow-hidden bg-black px-6 pb-20 pt-12 text-white">
@@ -132,7 +147,7 @@ export default async function HomePage() {
           ))}
         </div>
 
-        {events.length > featuredEvents.length && (
+        {eventsPage.total > featuredEvents.length && (
           <div className="mt-8 flex justify-center">
             <Link
               href="/search"

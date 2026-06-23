@@ -121,6 +121,28 @@ def event_query(db: Session):
         selectinload(Event.ticket_links),
     )
 
+
+def serialize_event_list(events: list[Event], page: int | None, per_page: int | None):
+    if page is None and per_page is None:
+        return [serialize_event(event) for event in events]
+
+    safe_page = page or 1
+    safe_per_page = per_page or 10
+    total = len(events)
+    start_index = (safe_page - 1) * safe_per_page
+    end_index = start_index + safe_per_page
+
+    return {
+        "items": [
+            serialize_event(event)
+            for event in events[start_index:end_index]
+        ],
+        "total": total,
+        "page": safe_page,
+        "per_page": safe_per_page,
+        "total_pages": max((total + safe_per_page - 1) // safe_per_page, 1),
+    }
+
 @app.get("/")
 def health_check():
     return {"status": "ok", "message": "Aussie Gigs API is running"}
@@ -342,6 +364,8 @@ def get_events(
     genre: list[str] | None = Query(default=None),
     start_date: str | None = None,
     end_date: str | None = None,
+    page: int | None = Query(default=None, ge=1),
+    per_page: int | None = Query(default=None, ge=1, le=100),
     db: Session = Depends(get_db),
 ):
     query = event_query(db)
@@ -365,27 +389,38 @@ def get_events(
     if end_date:
         query = query.filter(Event.event_date <= end_date)
 
-    events = [
-        serialize_event(event)
-        for event in query.order_by(Event.event_date, Event.event_time).all()
-    ]
+    events = query.order_by(Event.event_date, Event.event_time).all()
 
     if q:
         normalized_query = normalize_search_text(q)
 
         events = [
             event for event in events
-            if is_search_match(normalized_query, event["title"])
-            or is_search_match(normalized_query, event["artist"]["name"])
-            or is_search_match(normalized_query, event["venue"]["name"])
-            or is_search_match(normalized_query, event["city"])
+            if is_search_match(normalized_query, event.title)
+            or is_search_match(normalized_query, event.artist.name)
+            or is_search_match(normalized_query, event.venue.name)
+            or is_search_match(normalized_query, event.city)
             or any(
-                is_search_match(normalized_query, artist["name"])
-                for artist in event["lineup"]
+                is_search_match(normalized_query, artist.name)
+                for artist in event.lineup
             )
         ]
 
-    return events
+    return serialize_event_list(events, page, per_page)
+
+
+@app.get("/events/locations")
+def get_event_locations(db: Session = Depends(get_db)):
+    rows = db.query(Event.state, Event.city).distinct().order_by(
+        Event.state,
+        Event.city,
+    ).all()
+    locations: dict[str, list[str]] = {}
+
+    for state, city in rows:
+        locations.setdefault(state, []).append(city)
+
+    return locations
 
 @app.get("/events/{slug}")
 def get_event_by_slug(slug: str, db: Session = Depends(get_db)):

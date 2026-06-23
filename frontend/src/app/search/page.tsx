@@ -1,6 +1,6 @@
 import Link from "next/link";
 import EventCard from "@/components/EventCard";
-import { fetchEvents } from "@/lib/api";
+import { fetchEventLocations, fetchEvents, fetchEventsPage } from "@/lib/api";
 import {
   FALLBACK_ARTIST_IMAGE,
   FALLBACK_VENUE_IMAGE,
@@ -124,8 +124,23 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   const params = await searchParams;
   const selectedState = getSelectedState(params.state);
   const selectedGenres = getSelectedGenres(params.genre);
-  const allEventsForNavbar: Event[] = await fetchEvents();
-  const cityOptionsByState = getCityOptionsByState(allEventsForNavbar);
+  const activeTab = getActiveTab(params.tab);
+  const today = getTodayDateString();
+  const parsedPage = Number(params.page || "1");
+  const currentPage = Number.isFinite(parsedPage) && parsedPage > 0
+    ? Math.floor(parsedPage)
+    : 1;
+  const EVENTS_PER_PAGE = 10;
+  const [locations, navbarEventsPage] = await Promise.all([
+    fetchEventLocations(),
+    fetchEventsPage({
+      start_date: today,
+      page: 1,
+      per_page: 20,
+    }),
+  ]);
+  const allEventsForNavbar = navbarEventsPage.items;
+  const cityOptionsByState = getCityOptionsByState(locations);
   const selectedCity = getSelectedCity(
     params.city,
     selectedState,
@@ -136,72 +151,35 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     state: selectedState,
     city: selectedCity,
   };
-  const activeTab = getActiveTab(params.tab);
-
-  const events: Event[] = await fetchEvents({
+  const baseEventParams = {
     q: params.q,
     state: selectedState,
     city: selectedCity,
     event_type: params.event_type,
     genre: selectedGenres,
-    start_date: params.start_date,
-    end_date: params.end_date,
-  });
-
-  const today = getTodayDateString();
-
-  const sortedEvents = [...events].sort((a, b) => {
-    const dateCompare = a.event_date.localeCompare(b.event_date);
-
-    if (dateCompare !== 0) {
-      return dateCompare;
-    }
-
-    return a.event_time.localeCompare(b.event_time);
-  });
-
-  const upcomingEvents = sortedEvents.filter(
-    (event) => event.event_date >= today
-  );
-
-  const pastEvents = sortedEvents
-    .filter((event) => event.event_date < today)
-    .reverse();
-
-  const allEvents = [...upcomingEvents, ...pastEvents];
-
-  const eventsForCurrentTab =
-    activeTab === "all"
-      ? allEvents
-      : activeTab === "past"
-        ? pastEvents
-        : upcomingEvents;
-  
-  const parsedPage = Number(params.page || "1");
-  const currentPage = Number.isFinite(parsedPage) && parsedPage > 0
-    ? Math.floor(parsedPage)
-    : 1;
-  const EVENTS_PER_PAGE = 10;
-
-  const totalPages = Math.max(
-    Math.ceil(eventsForCurrentTab.length / EVENTS_PER_PAGE),
-    1
-  );
-
+    start_date: activeTab === "past" ? params.start_date : params.start_date || today,
+    end_date: activeTab === "past" ? params.end_date || today : params.end_date,
+  };
+  const shouldFetchAggregates = activeTab === "artists" || activeTab === "venues";
+  const [eventsPage, aggregateEvents] = await Promise.all([
+    fetchEventsPage({
+      ...baseEventParams,
+      page: currentPage,
+      per_page: EVENTS_PER_PAGE,
+    }),
+    shouldFetchAggregates ? fetchEvents(baseEventParams) : Promise.resolve([]),
+  ]);
+  const paginatedEvents = eventsPage.items;
+  const totalPages = eventsPage.total_pages;
   const safeCurrentPage = Math.min(currentPage, totalPages);
-
-  const paginatedEvents = eventsForCurrentTab.slice(
-    (safeCurrentPage - 1) * EVENTS_PER_PAGE,
-    safeCurrentPage * EVENTS_PER_PAGE
-  );
 
   const groupedEvents = groupEventsByDate(paginatedEvents);
   const groupedDates = Array.from(
     new Set(paginatedEvents.map((event) => event.event_date))
   );
 
-  const artists = getUniqueArtists(events);
-  const venues = getUniqueVenues(events);
+  const artists = shouldFetchAggregates ? getUniqueArtists(aggregateEvents) : [];
+  const venues = shouldFetchAggregates ? getUniqueVenues(aggregateEvents) : [];
   const currentSearchHref = buildSearchHref(normalizedParams, {});
 
   return (
@@ -380,13 +358,13 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
               {(activeTab === "all" ||
                 activeTab === "upcoming" ||
                 activeTab === "events") &&
-                `${upcomingEvents.length} upcoming event${
-                  upcomingEvents.length === 1 ? "" : "s"
+                `${eventsPage.total} upcoming event${
+                  eventsPage.total === 1 ? "" : "s"
                 } found`}
 
               {activeTab === "past" &&
-                `${pastEvents.length} past event${
-                  pastEvents.length === 1 ? "" : "s"
+                `${eventsPage.total} past event${
+                  eventsPage.total === 1 ? "" : "s"
                 } found`}
             </p>
             
@@ -428,7 +406,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
           activeTab === "events" ||
           activeTab === "past") && (
           <>
-            {eventsForCurrentTab.length > 0 ? (
+            {paginatedEvents.length > 0 ? (
               <div className="space-y-10">
                 {groupedDates.map((date) => (
                   <section key={date}>
@@ -551,25 +529,11 @@ function getSelectedState(state?: string): AustralianState | undefined {
     : undefined;
 }
 
-function getCityOptionsByState(events: Event[]) {
-  const cityOptionsByState = AU_STATES.reduce(
-    (options, state) => ({
-      ...options,
-      [state.code]: new Set<string>(),
-    }),
-    {} as Record<AustralianState, Set<string>>
-  );
-
-  events.forEach((event) => {
-    if (event.city && cityOptionsByState[event.state]) {
-      cityOptionsByState[event.state].add(event.city);
-    }
-  });
-
+function getCityOptionsByState(locations: Partial<Record<AustralianState, string[]>>) {
   return AU_STATES.reduce(
     (options, state) => ({
       ...options,
-      [state.code]: Array.from(cityOptionsByState[state.code]).sort((a, b) =>
+      [state.code]: [...(locations[state.code] || [])].sort((a, b) =>
         a.localeCompare(b)
       ),
     }),

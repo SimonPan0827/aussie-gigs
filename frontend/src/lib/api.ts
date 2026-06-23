@@ -1,5 +1,6 @@
 import type { Genre } from "@/types/genre";
 import type { AustralianState } from "@/types/location";
+import type { Event } from "@/types/event";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
 
@@ -11,6 +12,16 @@ type FetchEventsParams = {
   genre?: Genre | Genre[];
   start_date?: string;
   end_date?: string;
+  page?: number;
+  per_page?: number;
+};
+
+export type EventPage<T> = {
+  items: T[];
+  total: number;
+  page: number;
+  per_page: number;
+  total_pages: number;
 };
 
 export async function fetchEvents(params?: FetchEventsParams) {
@@ -50,6 +61,14 @@ export async function fetchEvents(params?: FetchEventsParams) {
     searchParams.set("end_date", params.end_date);
   }
 
+  if (params?.page) {
+    searchParams.set("page", String(params.page));
+  }
+
+  if (params?.per_page) {
+    searchParams.set("per_page", String(params.per_page));
+  }
+
   const queryString = searchParams.toString();
 
   const url = queryString
@@ -62,6 +81,23 @@ export async function fetchEvents(params?: FetchEventsParams) {
 
   if (!res.ok) {
     throw new Error("Failed to fetch events");
+  }
+
+  return res.json();
+}
+
+export async function fetchEventsPage(params: FetchEventsParams) {
+  const data = await fetchEvents(params);
+  return data as EventPage<Event>;
+}
+
+export async function fetchEventLocations() {
+  const res = await fetch(`${API_BASE_URL}/events/locations`, {
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to fetch event locations");
   }
 
   return res.json();
