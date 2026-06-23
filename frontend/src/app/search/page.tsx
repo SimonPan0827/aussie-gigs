@@ -23,7 +23,6 @@ function formatEventType(type?: string) {
     concert: "Concert",
     festival: "Festival",
     "dj-set": "DJ Set",
-    "party-night": "Party Night",
   };
 
   return labels[type] || type;

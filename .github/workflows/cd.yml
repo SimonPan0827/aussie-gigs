@@ -51,3 +51,28 @@ jobs:
             --cluster "${{ vars.ECS_CLUSTER }}" \
             --service "${{ vars.ECS_FRONTEND_SERVICE }}" \
             --force-new-deployment
+      - name: Wait for frontend deployment
+        run: |
+          aws ecs wait services-stable \
+            --cluster "${{ vars.ECS_CLUSTER }}" \
+            --services "${{ vars.ECS_FRONTEND_SERVICE }}"
+      - name: Sync custom domain listener rule
+        run: |
+          SOURCE_RULE_ARN=$(aws elbv2 describe-rules \
+            --listener-arn "${{ vars.ALB_HTTPS_LISTENER_ARN }}" \
+            --query "Rules[?Conditions[?Field=='host-header' && contains(Values, '${{ vars.FRONTEND_ECS_HOST }}')]].RuleArn | [0]" \
+            --output text)
+
+          if [ "$SOURCE_RULE_ARN" = "None" ] || [ -z "$SOURCE_RULE_ARN" ]; then
+            echo "Could not find ECS frontend listener rule for ${{ vars.FRONTEND_ECS_HOST }}"
+            exit 1
+          fi
+
+          SOURCE_ACTIONS=$(aws elbv2 describe-rules \
+            --rule-arns "$SOURCE_RULE_ARN" \
+            --query "Rules[0].Actions" \
+            --output json)
+
+          aws elbv2 modify-rule \
+            --rule-arn "${{ vars.FRONTEND_CUSTOM_DOMAIN_RULE_ARN }}" \
+            --actions "$SOURCE_ACTIONS"

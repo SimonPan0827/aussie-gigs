@@ -9,7 +9,6 @@ EVENT_TYPE_VALUES = [
     "concert",
     "festival",
     "dj-set",
-    "party-night",
 ]
 
 
